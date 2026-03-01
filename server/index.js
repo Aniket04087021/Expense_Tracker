@@ -8,8 +8,10 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/expense_tracker";
+  process.env.MONGODB_URI ||
+  (IS_PRODUCTION ? "" : "mongodb://localhost:27017/expense_tracker");
 const CLIENT_URL =
   process.env.CLIENT_URL ||
   (process.env.NODE_ENV === "production"
@@ -23,7 +25,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const TOKEN_COOKIE = "token";
 const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const IS_PRODUCTION_LIKE =
-  process.env.NODE_ENV === "production" ||
+  IS_PRODUCTION ||
   CLIENT_URLS.some((url) => !url.includes("localhost"));
 const COOKIE_SAME_SITE =
   process.env.COOKIE_SAME_SITE ||
@@ -31,6 +33,11 @@ const COOKIE_SAME_SITE =
 const COOKIE_SECURE = process.env.COOKIE_SECURE
   ? process.env.COOKIE_SECURE === "true"
   : IS_PRODUCTION_LIKE;
+
+if (!MONGODB_URI) {
+  console.error("Missing MONGODB_URI in production environment.");
+  process.exit(1);
+}
 
 mongoose
   .connect(MONGODB_URI)
@@ -177,6 +184,7 @@ app.post("/api/auth/register", async (req, res) => {
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
+    console.error("Register error:", error);
     return res.status(500).json({ error: "Failed to create account" });
   }
 });
@@ -202,6 +210,7 @@ app.post("/api/auth/login", async (req, res) => {
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
+    console.error("Login error:", error);
     return res.status(500).json({ error: "Failed to log in" });
   }
 });
