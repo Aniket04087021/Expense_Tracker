@@ -1,0 +1,23 @@
+﻿:root {
+  font-family: "Space Grotesk", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  color: #1b1b1b;
+  background: #0c0e12;
+  line-height: 1.4;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(1200px 800px at 10% 10%, #1b2233 0%, #0c0e12 55%, #07080a 100%);
+}
+
+#root {
+  min-height: 100vh;
+}

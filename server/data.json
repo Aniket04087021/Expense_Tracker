@@ -1,0 +1,100 @@
+[
+  {
+    "id": "1770718356442",
+    "title": "inv",
+    "category": "Investment",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": 1000
+  },
+  {
+    "id": "1770718242463",
+    "title": "inv",
+    "category": "Investment",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": 999.99
+  },
+  {
+    "id": "1770717966082",
+    "title": "inv",
+    "category": "Investment",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": 100
+  },
+  {
+    "id": "1770717914900",
+    "title": "in",
+    "category": "Investment",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": 1000
+  },
+  {
+    "id": "1770717689036",
+    "title": "invest",
+    "category": "Investment",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": 50000
+  },
+  {
+    "id": "1770717226365",
+    "title": "zxcvbn",
+    "category": "Food",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": -12345
+  },
+  {
+    "id": "1770717216690",
+    "title": "sdfgh",
+    "category": "Food",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": -1525
+  },
+  {
+    "id": "1770717200385",
+    "title": "asd",
+    "category": "Food",
+    "date": "2026-02-12T00:00:00.000Z",
+    "amount": -10000
+  },
+  {
+    "id": "1770716543039",
+    "title": "food",
+    "category": "Food",
+    "date": "2026-02-11T00:00:00.000Z",
+    "amount": -799.99
+  },
+  {
+    "id": "1770716373859",
+    "title": "movie",
+    "category": "Lifestyle",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": -500
+  },
+  {
+    "id": "1770715982421",
+    "title": "salary",
+    "category": "Income",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": 4999.99
+  },
+  {
+    "id": "1770715774197",
+    "title": "medical",
+    "category": "Bills",
+    "date": "2026-02-09T00:00:00.000Z",
+    "amount": -1000
+  },
+  {
+    "id": "1770715653654",
+    "title": "job",
+    "category": "Income",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": 10000
+  },
+  {
+    "id": "1770715605883",
+    "title": "food",
+    "category": "Food",
+    "date": "2026-02-10T00:00:00.000Z",
+    "amount": -1000
+  }
+]
