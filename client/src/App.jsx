@@ -33,7 +33,7 @@ const formatDate = (value) => {
 
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? "/api" : "https://expense-tracker-77f6.onrender.com/api");
+  (import.meta.env.DEV ? "/api" : "https://expense-tracker-1-vb9x.onrender.com/api");
 const TRANSACTIONS_URL = `${API_BASE}/transactions`;
 
 const goalGroups = [

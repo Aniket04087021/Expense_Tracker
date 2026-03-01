@@ -24,7 +24,7 @@ After deploy, copy your backend URL:
 - Set **Root Directory**: `client`
 - Framework preset: **Vite**
 - Add environment variable:
-  - `VITE_API_BASE_URL=https://expense-tracker-77f6.onrender.com/api`
+  - `VITE_API_BASE_URL=https://expense-tracker-1-vb9x.onrender.com/api`
 
 Deploy and copy your frontend URL:
 - Example: `https://expnse.vercel.app`
