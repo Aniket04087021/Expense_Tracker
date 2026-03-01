@@ -10,10 +10,27 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/expense_tracker";
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+const CLIENT_URL =
+  process.env.CLIENT_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://expense-tracker-lyart-alpha.vercel.app"
+    : "http://localhost:5173");
+const CLIENT_URLS = (process.env.CLIENT_URLS || CLIENT_URL)
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const TOKEN_COOKIE = "token";
 const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const IS_PRODUCTION_LIKE =
+  process.env.NODE_ENV === "production" ||
+  CLIENT_URLS.some((url) => !url.includes("localhost"));
+const COOKIE_SAME_SITE =
+  process.env.COOKIE_SAME_SITE ||
+  (IS_PRODUCTION_LIKE ? "none" : "lax");
+const COOKIE_SECURE = process.env.COOKIE_SECURE
+  ? process.env.COOKIE_SECURE === "true"
+  : IS_PRODUCTION_LIKE;
 
 mongoose
   .connect(MONGODB_URI)
@@ -69,8 +86,8 @@ const signToken = (user) =>
 const setAuthCookie = (res, token) => {
   res.cookie(TOKEN_COOKIE, token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: COOKIE_SAME_SITE,
+    secure: COOKIE_SECURE,
     maxAge: TOKEN_MAX_AGE_MS,
   });
 };
@@ -78,8 +95,8 @@ const setAuthCookie = (res, token) => {
 const clearAuthCookie = (res) => {
   res.clearCookie(TOKEN_COOKIE, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: COOKIE_SAME_SITE,
+    secure: COOKIE_SECURE,
   });
 };
 
@@ -115,7 +132,12 @@ const requireAuth = async (req, res, next) => {
 
 app.use(
   cors({
-    origin: CLIENT_URL,
+    origin: (origin, callback) => {
+      if (!origin || CLIENT_URLS.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   }),
 );
