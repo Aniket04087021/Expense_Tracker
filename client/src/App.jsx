@@ -1023,7 +1023,7 @@ function App() {
           </section>
 
           <section className="content-grid">
-            <article className="panel">
+            <article className="panel panel-chart">
               <div className="panel-header">
                 <div>
                   <h3>Monthly burn</h3>
@@ -1032,20 +1032,22 @@ function App() {
                 <input className="month-picker" type="month" value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)} />
               </div>
-              <div className="bar-chart">
-                {dailySpend.length === 0 ? (
-                  <p className="empty-state">No transactions for this month.</p>
-                ) : (
-                  dailySpend.map((value, index) => (
-                    <div className="bar" key={`day-${index}`}
-                      style={{ "--bar-height": maxDailySpend ? `${(value / maxDailySpend) * 100}%` : "0%" }}
-                      data-amount={formatCurrency.format(value)}
-                      title={formatCurrency.format(value)} tabIndex={0}>
-                      <span className={value > 0 ? "active" : ""} />
-                      <em>{index + 1}</em>
-                    </div>
-                  ))
-                )}
+              <div className="bar-chart-wrapper">
+                <div className="bar-chart">
+                  {dailySpend.length === 0 ? (
+                    <p className="empty-state">No transactions for this month.</p>
+                  ) : (
+                    dailySpend.map((value, index) => (
+                      <div className="bar" key={`day-${index}`}
+                        style={{ "--bar-height": maxDailySpend ? `${(value / maxDailySpend) * 100}%` : "0%" }}
+                        data-amount={formatCurrency.format(value)}
+                        title={formatCurrency.format(value)} tabIndex={0}>
+                        <span className={value > 0 ? "active" : ""} />
+                        <em>{index + 1}</em>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </article>
 
