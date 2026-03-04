@@ -228,6 +228,8 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState("login");
   const [showNavMenu, setShowNavMenu] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [installingPwa, setInstallingPwa] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -267,6 +269,25 @@ function App() {
       }
     };
     initAuth();
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event);
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredInstallPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
   }, []);
 
   useEffect(() => {
@@ -420,6 +441,15 @@ function App() {
     }
   };
 
+  const handleInstallApp = async () => {
+    if (!deferredInstallPrompt) return;
+    setInstallingPwa(true);
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
+    setInstallingPwa(false);
+  };
+
   const formatPlainAmount = (value) =>
     new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
@@ -563,8 +593,7 @@ function App() {
       )}
 
       {!isAuthenticated ? (
-        <div className="landing-shell">
-
+        <>
           {/* ── NAVBAR ── */}
           <nav className={`landing-nav ${showNavMenu ? "open" : ""}`}>
             <div className="brand">
@@ -596,6 +625,8 @@ function App() {
               </div>
             </div>
           </nav>
+
+          <div className="landing-shell">
 
           {/* ── HERO ── */}
           <header className="hero-section">
@@ -839,6 +870,11 @@ function App() {
                 <button className="ghost" onClick={() => openAuth("login")}>
                   Already have an account
                 </button>
+                {deferredInstallPrompt && (
+                  <button className="ghost" onClick={handleInstallApp} disabled={installingPwa}>
+                    {installingPwa ? "Installing..." : "Install on mobile"}
+                  </button>
+                )}
               </div>
               <div className="cta-platform-cards">
                 <div className="platform-card">
@@ -901,7 +937,8 @@ function App() {
             </div>
           </footer>
 
-        </div>
+          </div>{/* landing-shell */}
+        </>
       ) : (
         <>
           <header className="top-bar">
@@ -911,6 +948,11 @@ function App() {
             </div>
             <div className="top-actions">
               <button className="ghost" onClick={handleLogout}>Logout</button>
+              {deferredInstallPrompt && (
+                <button className="ghost" onClick={handleInstallApp} disabled={installingPwa}>
+                  {installingPwa ? "Installing..." : "Install app"}
+                </button>
+              )}
               <button className="ghost export-btn" onClick={handleExport}>
                 📄 Export PDF
               </button>

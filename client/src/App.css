@@ -59,7 +59,7 @@ p { margin: 0; }
   padding: 28px 20px 80px;
 }
 
-.landing-shell { display: grid; gap: 64px; }
+.landing-shell { display: grid; gap: 64px; padding-top: 88px; }
 
 /* ════════════════════════════════
    NAVBAR
@@ -70,12 +70,16 @@ p { margin: 0; }
   justify-content: space-between;
   padding: 12px 20px;
   border-radius: var(--r-xl);
-  background: rgba(8, 12, 24, 0.85);
+  background: rgba(8, 12, 24, 0.88);
   border: 1px solid var(--border);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  position: sticky;
+  position: fixed;
   top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 1160px;
   z-index: 200;
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
@@ -461,6 +465,10 @@ button:active:not(:disabled) { transform: scale(0.97); }
   letter-spacing: 0.01em;
   box-shadow: 0 8px 22px rgba(255,138,91,0.32);
   white-space: nowrap;
+}
+
+.strong{
+  color: black;
 }
 
 .primary:hover { box-shadow: 0 14px 32px rgba(255,138,91,0.50); transform: translateY(-2px); }
@@ -1052,8 +1060,17 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 32px;
   flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(7, 9, 15, 0.90);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  margin: 0 -20px 24px;
+  width: calc(100% + 40px);
 }
 
 .top-bar h1 { margin: 6px 0 0; font-size: clamp(1.8rem,1.4rem + 1.6vw,3rem); font-weight: 700; color: var(--text); letter-spacing: -0.03em; }
@@ -1173,7 +1190,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-radius: var(--r-sm);
   background: rgba(52,211,153,0.08);
   border: 1px solid rgba(52,211,153,0.2);
-}
+  }
 
 .transaction-title { margin: 0 0 3px; font-weight: 600; font-size: 0.88rem; color: var(--text); }
 .amount { font-weight: 700; font-size: 0.92rem; white-space: nowrap; }
@@ -1261,7 +1278,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @media (max-width: 768px) {
-  .landing-shell { gap: 48px; }
+  .landing-shell { gap: 48px; padding-top: 80px; }
   .nav-toggle { display: flex !important; }
 
   .landing-nav {
@@ -1269,8 +1286,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     padding: 12px 16px;
     gap: 0;
     align-items: center;
-    position: relative;
-    top: 0;
+    top: 8px;
+    width: calc(100% - 24px);
   }
 
   .nav-menu {
@@ -1304,7 +1321,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .footer-links-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
 
   /* ── Dashboard top bar ── */
-  .top-bar { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
+  .top-bar { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 16px; margin: 0 -16px 18px; width: calc(100% + 32px); }
   .top-bar h1 { font-size: clamp(1.5rem, 5vw, 2rem); }
   .top-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .top-actions .primary { grid-column: 1 / -1; }
@@ -1350,11 +1367,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 @media (max-width: 520px) {
   .app { padding: 14px 12px 60px; }
-  .landing-shell { gap: 36px; }
+  .landing-shell { gap: 36px; padding-top: 76px; }
   .landing-nav { border-radius: 18px; }
 
   /* ── Dashboard top bar ── */
-  .top-bar { gap: 8px; margin-bottom: 14px; }
+  .top-bar { gap: 6px; padding: 10px 12px; margin: 0 -12px 14px; width: calc(100% + 24px); }
   .top-bar h1 { font-size: 1.35rem; }
   .top-actions { grid-template-columns: 1fr 1fr; gap: 7px; }
   .top-actions .primary { grid-column: 1 / -1; }
@@ -1409,6 +1426,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .hero-title { font-size: 1.8rem; }
   .brand strong { font-size: 0.95rem; }
   .brand-mark { width: 32px; height: 32px; font-size: 0.78rem; }
+  .top-bar { padding: 8px 10px; margin: 0 -10px 12px; width: calc(100% + 20px); }
   .top-bar h1 { font-size: 1.2rem; }
   .summary-card h2 { font-size: 1.4rem; }
   .top-actions button { font-size: 0.74rem; padding: 8px 8px; }
