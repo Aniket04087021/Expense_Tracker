@@ -2,6 +2,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./App.css";
+import logo from "./assets/logo.png";
 
 const categoryPalette = {
   Food: "#ff8a5b",
@@ -152,9 +153,8 @@ function AuthModal({ mode, onClose, onSuccess }) {
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-card">
         <div className="modal-header">
-          <div className="modal-brand">
-            <span className="brand-mark sm">Ex</span>
-            <span className="modal-brand-name">Expnse</span>
+          <div className="brand">
+            <img src={logo} alt="Expnse Logo" className="logo" />
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
@@ -597,11 +597,7 @@ function App() {
           {/* ── NAVBAR ── */}
           <nav className={`landing-nav ${showNavMenu ? "open" : ""}`}>
             <div className="brand">
-              <span className="brand-mark">Ex</span>
-              <div>
-                <p className="eyebrow">Expense tracker</p>
-                <strong>Expnse</strong>
-              </div>
+              <img src={logo} alt="Expnse Logo" className="logo" />
             </div>
             <button
               className="nav-toggle"
@@ -900,11 +896,7 @@ function App() {
             <div className="footer-top">
               <div className="footer-brand">
                 <div className="brand">
-                  <span className="brand-mark">Ex</span>
-                  <div>
-                    <p className="eyebrow">Expense tracker</p>
-                    <strong>Expnse</strong>
-                  </div>
+                  <img src={logo} alt="Expnse Logo" className="logo" />
                 </div>
                 <p className="footer-tagline muted">
                   A calm, real-time view of your financial life.<br />
@@ -943,7 +935,7 @@ function App() {
         <>
           <header className="top-bar">
             <div>
-              <p className="eyebrow">Expense tracker</p>
+              <img src={logo} alt="Expnse Logo" className="top-logo" />
               <h1>Welcome{user?.name ? `, ${user.name}` : ""}.</h1>
             </div>
             <div className="top-actions">
