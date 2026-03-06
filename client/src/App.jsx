@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./App.css";
@@ -11,6 +11,12 @@ const categoryPalette = {
   Bills: "#a78bfa",
   Investment: "#34d399",
   Income: "#22c55e",
+  Home: "#60a5fa",
+  Bike: "#f97316",
+  Car: "#fb7185",
+  Travel: "#38bdf8",
+  Education: "#fbbf24",
+  Health: "#22c55e",
   Other: "#94a3b8",
 };
 
@@ -36,13 +42,6 @@ const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? "/api" : "https://expense-tracker-1-vb9x.onrender.com/api");
 const TRANSACTIONS_URL = `${API_BASE}/transactions`;
-
-const goalGroups = [
-  { label: "Essentials", categories: ["Food", "Bills", "Transport"] },
-  { label: "Lifestyle", categories: ["Lifestyle", "Other"] },
-  { label: "Investment", categories: ["Investment"] },
-  { label: "Travel", categories: ["Travel"] },
-];
 
 const landingFeatures = [
   {
@@ -91,6 +90,31 @@ const landingFeatures = [
 
 const getMonthKey = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+const getQuarterKey = (date) => {
+  const quarter = Math.floor(date.getMonth() / 3) + 1;
+  return `${date.getFullYear()}-Q${quarter}`;
+};
+
+const goalPeriods = [
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "yearly", label: "Yearly" },
+];
+
+const goalCategoryOptions = [
+  "Home",
+  "Bike",
+  "Car",
+  "Travel",
+  "Education",
+  "Health",
+  "Bills",
+  "Food",
+  "Transport",
+  "Lifestyle",
+  "Other",
+];
 
 const apiRequest = async (path, options = {}) => {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -220,6 +244,42 @@ function AuthModal({ mode, onClose, onSuccess }) {
   );
 }
 
+function InstallHelpModal({ onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-card">
+        <div className="modal-header">
+          <div className="brand">
+            <img src={logo} alt="Expnse" className="logo" />
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <p className="modal-subtitle">
+          Install Expnse on your phone like an app.
+        </p>
+        <div className="expense-form" style={{ gap: 12 }}>
+          <div>
+            <strong>Android (Chrome)</strong>
+            <p className="muted" style={{ marginTop: 6 }}>
+              Tap the browser menu (⋮) → <strong>Install app</strong> / <strong>Add to Home screen</strong>.
+            </p>
+          </div>
+          <div>
+            <strong>iPhone / iPad (Safari)</strong>
+            <p className="muted" style={{ marginTop: 6 }}>
+              Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.
+            </p>
+          </div>
+          <button className="primary form-submit" type="button" onClick={onClose}>
+            Got it
+          </button>
+        </div>
+        <p className="fine-print">Tip: the install option appears after a few seconds and a reload sometimes.</p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -230,6 +290,17 @@ function App() {
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [installingPwa, setInstallingPwa] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [goals, setGoals] = useState([]);
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState(null);
+  const [goalForm, setGoalForm] = useState({
+    name: "",
+    category: "Home",
+    period: "monthly",
+    amount: "",
+  });
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -250,6 +321,11 @@ function App() {
     setAuthModalMode(mode);
     setShowAuthModal(true);
   };
+
+  const goalsStorageKey = useMemo(() => {
+    const uid = user?._id || user?.id || user?.email || "anon";
+    return `expnse:goals:v1:${uid}`;
+  }, [user]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -272,6 +348,28 @@ function App() {
   }, []);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(goalsStorageKey);
+      if (!raw) {
+        setGoals([]);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      setGoals(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setGoals([]);
+    }
+  }, [goalsStorageKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(goalsStorageKey, JSON.stringify(goals));
+    } catch {
+      // ignore storage failures (private mode / quota)
+    }
+  }, [goals, goalsStorageKey]);
+
+  useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
       event.preventDefault();
       setDeferredInstallPrompt(event);
@@ -279,6 +377,7 @@ function App() {
 
     const handleAppInstalled = () => {
       setDeferredInstallPrompt(null);
+      setIsAppInstalled(true);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -288,6 +387,17 @@ function App() {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
+  }, []);
+
+  useEffect(() => {
+    const detectInstalled = () => {
+      const standalone =
+        window.matchMedia?.("(display-mode: standalone)")?.matches ||
+        window.matchMedia?.("(display-mode: fullscreen)")?.matches;
+      const iosStandalone = window.navigator.standalone === true;
+      setIsAppInstalled(Boolean(standalone || iosStandalone));
+    };
+    detectInstalled();
   }, []);
 
   useEffect(() => {
@@ -348,49 +458,141 @@ function App() {
     [categoryBreakdown]
   );
 
-  const dailySpend = useMemo(() => {
+  const dailySeries = useMemo(() => {
     const [year, month] = selectedMonth.split("-").map(Number);
-    if (!year || !month) return [];
+    if (!year || !month) return { income: [], expense: [], daysInMonth: 0 };
     const daysInMonth = new Date(year, month, 0).getDate();
-    const arr = Array.from({ length: daysInMonth }, () => 0);
+    const income = Array.from({ length: daysInMonth }, () => 0);
+    const expense = Array.from({ length: daysInMonth }, () => 0);
     normalizedTransactions.forEach((entry) => {
-      if (entry.amount >= 0 || entry.type === "investment") return;
       const d = new Date(entry.date);
       if (Number.isNaN(d.getTime())) return;
       if (d.getFullYear() === year && d.getMonth() + 1 === month) {
-        arr[d.getDate() - 1] += Math.abs(entry.amount);
+        const idx = d.getDate() - 1;
+        if (entry.type === "income" && entry.amount > 0) {
+          income[idx] += Math.abs(entry.amount);
+        } else if (entry.type !== "investment" && entry.amount < 0) {
+          expense[idx] += Math.abs(entry.amount);
+        }
       }
     });
-    return arr;
+    return { income, expense, daysInMonth };
   }, [normalizedTransactions, selectedMonth]);
 
-  const maxDailySpend = useMemo(() => (dailySpend.length ? Math.max(...dailySpend) : 0), [dailySpend]);
+  const maxDailyMagnitude = useMemo(() => {
+    const maxIncome = dailySeries.income.length ? Math.max(...dailySeries.income) : 0;
+    const maxExpense = dailySeries.expense.length ? Math.max(...dailySeries.expense) : 0;
+    return Math.max(maxIncome, maxExpense, 0);
+  }, [dailySeries]);
 
-  const spendingGoals = useMemo(() => {
+  const goalProgress = useMemo(() => {
     const [year, month] = selectedMonth.split("-").map(Number);
     if (!year || !month) return [];
-    const currentKey = `${year}-${String(month).padStart(2, "0")}`;
-    const lastKey = getMonthKey(new Date(year, month - 2, 1));
-    const map = {};
-    normalizedTransactions.forEach((entry) => {
-      if (entry.amount >= 0 || entry.type === "investment") return;
-      const d = new Date(entry.date);
-      if (Number.isNaN(d.getTime())) return;
-      const ek = getMonthKey(d);
-      goalGroups.forEach((g) => {
-        if (!g.categories.includes(entry.category)) return;
-        const k = `${ek}-${g.label}`;
-        map[k] = (map[k] || 0) + Math.abs(entry.amount);
-      });
+    const monthStart = new Date(year, month - 1, 1);
+    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const quarter = Math.floor((month - 1) / 3) + 1;
+    const qStartMonth = (quarter - 1) * 3;
+    const quarterStart = new Date(year, qStartMonth, 1);
+    const quarterEnd = new Date(year, qStartMonth + 3, 0, 23, 59, 59, 999);
+
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 12, 0, 23, 59, 59, 999);
+
+    const sumSpendForCategory = (category, start, end) =>
+      normalizedTransactions
+        .filter((t) => t.type !== "investment" && t.amount < 0 && (t.category || "Other") === category)
+        .reduce((sum, t) => {
+          const d = new Date(t.date);
+          if (Number.isNaN(d.getTime())) return sum;
+          if (d < start || d > end) return sum;
+          return sum + Math.abs(t.amount);
+        }, 0);
+
+    const periodRange = (period) => {
+      if (period === "yearly") return { start: yearStart, end: yearEnd, label: String(year) };
+      if (period === "quarterly")
+        return { start: quarterStart, end: quarterEnd, label: getQuarterKey(monthStart) };
+      return { start: monthStart, end: monthEnd, label: getMonthKey(monthStart) };
+    };
+
+    return goals.map((g) => {
+      const { start, end, label } = periodRange(g.period);
+      const spent = sumSpendForCategory(g.category, start, end);
+      const target = Number(g.amount) || 0;
+      const progress = target ? Math.min((spent / target) * 100, 100) : 0;
+      return { ...g, spent, target, progress, periodLabel: label };
     });
-    return goalGroups.map((g) => {
-      const lastSpend = map[`${lastKey}-${g.label}`] || 0;
-      const currentSpend = map[`${currentKey}-${g.label}`] || 0;
-      const target = lastSpend ? Math.round(lastSpend * 0.9) : 0;
-      const progress = target ? Math.min((currentSpend / target) * 100, 100) : 0;
-      return { label: g.label, currentSpend, target, progress };
+  }, [goals, normalizedTransactions, selectedMonth]);
+
+  const handleGoalFormChange = (event) => {
+    const { name, value } = event.target;
+    setGoalForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const resetGoalForm = () => {
+    setGoalForm({ name: "", category: "Home", period: "monthly", amount: "" });
+    setEditingGoalId(null);
+  };
+
+  const handleSaveGoal = () => {
+    const name = goalForm.name.trim();
+    const amount = Number(goalForm.amount);
+    if (!name || !goalForm.category || !goalForm.period) return;
+    if (Number.isNaN(amount) || amount <= 0) return;
+
+    if (editingGoalId) {
+      setGoals((prev) =>
+        prev.map((g) =>
+          g.id === editingGoalId
+            ? {
+                ...g,
+                name,
+                category: goalForm.category,
+                period: goalForm.period,
+                amount,
+                updatedAt: new Date().toISOString(),
+              }
+            : g
+        )
+      );
+    } else {
+      const newGoal = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        category: goalForm.category,
+        period: goalForm.period,
+        amount,
+        createdAt: new Date().toISOString(),
+      };
+      setGoals((prev) => [newGoal, ...prev]);
+    }
+
+    resetGoalForm();
+    setShowGoalForm(false);
+  };
+
+  const handleRemoveGoal = (goalId) => {
+    setGoals((prev) => prev.filter((g) => g.id !== goalId));
+  };
+
+  const handleEditGoal = (goal) => {
+    setEditingGoalId(goal.id);
+    setGoalForm({
+      name: goal.name || "",
+      category: goal.category || "Home",
+      period: goal.period || "monthly",
+      amount: String(goal.amount ?? ""),
     });
-  }, [normalizedTransactions, selectedMonth]);
+    setShowGoalForm(true);
+  };
+
+  const monthLabel = useMemo(() => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    if (!year || !month) return selectedMonth;
+    const d = new Date(year, month - 1, 1);
+    return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  }, [selectedMonth]);
 
   const filteredTransactions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -442,7 +644,11 @@ function App() {
   };
 
   const handleInstallApp = async () => {
-    if (!deferredInstallPrompt) return;
+    if (isAppInstalled) return;
+    if (!deferredInstallPrompt) {
+      setShowInstallHelp(true);
+      return;
+    }
     setInstallingPwa(true);
     deferredInstallPrompt.prompt();
     await deferredInstallPrompt.userChoice;
@@ -591,6 +797,7 @@ function App() {
           }}
         />
       )}
+      {showInstallHelp && <InstallHelpModal onClose={() => setShowInstallHelp(false)} />}
 
       {!isAuthenticated ? (
         <>
@@ -866,11 +1073,13 @@ function App() {
                 <button className="ghost" onClick={() => openAuth("login")}>
                   Already have an account
                 </button>
-                {deferredInstallPrompt && (
-                  <button className="ghost" onClick={handleInstallApp} disabled={installingPwa}>
-                    {installingPwa ? "Installing..." : "Install on mobile"}
-                  </button>
-                )}
+                <button
+                  className="ghost"
+                  onClick={handleInstallApp}
+                  disabled={installingPwa || isAppInstalled}
+                >
+                  {isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install on mobile"}
+                </button>
               </div>
               <div className="cta-platform-cards">
                 <div className="platform-card">
@@ -940,11 +1149,9 @@ function App() {
             </div>
             <div className="top-actions">
               <button className="ghost" onClick={handleLogout}>Logout</button>
-              {deferredInstallPrompt && (
-                <button className="ghost" onClick={handleInstallApp} disabled={installingPwa}>
-                  {installingPwa ? "Installing..." : "Install app"}
-                </button>
-              )}
+              <button className="ghost" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled}>
+                {isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}
+              </button>
               <button className="ghost export-btn" onClick={handleExport}>
                 📄 Export PDF
               </button>
@@ -973,6 +1180,12 @@ function App() {
                     <select name="category" value={formState.category} onChange={handleChange}>
                       <option>Food</option>
                       <option>Transport</option>
+                      <option>Home</option>
+                      <option>Bike</option>
+                      <option>Car</option>
+                      <option>Travel</option>
+                      <option>Education</option>
+                      <option>Health</option>
                       <option>Lifestyle</option>
                       <option>Bills</option>
                       <option>Investment</option>
@@ -1061,27 +1274,108 @@ function App() {
               <div className="panel-header">
                 <div>
                   <h3>Monthly burn</h3>
-                  <p className="muted">Daily spend for the selected month</p>
+                  <p className="muted">Daily income vs expense — income up, expense down</p>
                 </div>
                 <input className="month-picker" type="month" value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)} />
               </div>
-              <div className="bar-chart-wrapper">
-                <div className="bar-chart">
-                  {dailySpend.length === 0 ? (
-                    <p className="empty-state">No transactions for this month.</p>
-                  ) : (
-                    dailySpend.map((value, index) => (
-                      <div className="bar" key={`day-${index}`}
-                        style={{ "--bar-height": maxDailySpend ? `${(value / maxDailySpend) * 100}%` : "0%" }}
-                        data-amount={formatCurrency.format(value)}
-                        title={formatCurrency.format(value)} tabIndex={0}>
-                        <span className={value > 0 ? "active" : ""} />
-                        <em>{index + 1}</em>
-                      </div>
-                    ))
-                  )}
+              <div className="burn-chart">
+                <div className="burn-legend">
+                  <span className="burn-pill income"><i /> Income</span>
+                  <span className="burn-pill expense"><i /> Expense</span>
+                  <span className="burn-meta muted">{monthLabel}</span>
                 </div>
+                {dailySeries.daysInMonth === 0 ? (
+                  <p className="empty-state">Pick a month to see trends.</p>
+                ) : maxDailyMagnitude === 0 ? (
+                  <p className="empty-state">No income/expense activity for this month.</p>
+                ) : (
+                  (() => {
+                    const width = 720;
+                    const height = 220;
+                    const padX = 18;
+                    const padTop = 16;
+                    const padBottom = 18;
+                    const midY = Math.round((padTop + (height - padBottom)) / 2);
+                    const amp = Math.max(10, Math.floor(((height - padTop - padBottom) / 2) - 10));
+                    const days = dailySeries.daysInMonth;
+                    const denom = Math.max(1, days - 1);
+                    const plotW = width - padX * 2;
+                    const mkPoints = (arr, dir) =>
+                      arr
+                        .map((v, idx) => {
+                          const x = Math.round(padX + (idx / denom) * plotW);
+                          const y =
+                            dir === "up"
+                              ? Math.round(midY - (v / maxDailyMagnitude) * amp)
+                              : Math.round(midY + (v / maxDailyMagnitude) * amp);
+                          return `${x},${y}`;
+                        })
+                        .join(" ");
+
+                    const incomePoints = mkPoints(dailySeries.income, "up");
+                    const expensePoints = mkPoints(dailySeries.expense, "down");
+
+                    return (
+                      <svg
+                        className="burn-svg"
+                        viewBox={`0 0 ${width} ${height}`}
+                        role="img"
+                        aria-label="Income and expense trend lines for the selected month"
+                        preserveAspectRatio="none"
+                      >
+                        <defs>
+                          <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stopColor="rgba(52,211,153,0.30)" />
+                            <stop offset="1" stopColor="rgba(52,211,153,0.00)" />
+                          </linearGradient>
+                          <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stopColor="rgba(252,165,165,0.00)" />
+                            <stop offset="1" stopColor="rgba(252,165,165,0.26)" />
+                          </linearGradient>
+                        </defs>
+
+                        {/* grid */}
+                        {[0.25, 0.5, 0.75].map((t) => {
+                          const y = Math.round(padTop + (height - padTop - padBottom) * t);
+                          return (
+                            <line
+                              key={t}
+                              x1={padX}
+                              y1={y}
+                              x2={width - padX}
+                              y2={y}
+                              stroke="rgba(255,255,255,0.08)"
+                              strokeWidth="1"
+                            />
+                          );
+                        })}
+                        <line
+                          x1={padX}
+                          y1={midY}
+                          x2={width - padX}
+                          y2={midY}
+                          stroke="rgba(255,255,255,0.14)"
+                          strokeWidth="1"
+                        />
+
+                        {/* income area */}
+                        <path
+                          d={`M ${incomePoints} L ${width - padX},${midY} L ${padX},${midY} Z`}
+                          fill="url(#incomeFill)"
+                        />
+                        {/* expense area */}
+                        <path
+                          d={`M ${expensePoints} L ${width - padX},${midY} L ${padX},${midY} Z`}
+                          fill="url(#expenseFill)"
+                        />
+
+                        <polyline className="burn-line income" points={incomePoints} fill="none" />
+                        <polyline className="burn-line expense" points={expensePoints} fill="none" />
+                      </svg>
+                    );
+                  })()
+                )}
               </div>
             </article>
 
@@ -1091,7 +1385,6 @@ function App() {
                   <h3>Category split</h3>
                   <p className="muted">Where your money goes</p>
                 </div>
-                <button className="ghost small">Edit</button>
               </div>
               <div className="donut-wrap">
                 <div className="donut" style={{
@@ -1134,7 +1427,6 @@ function App() {
                   <h3>Recent activity</h3>
                   <p className="muted">Latest transactions</p>
                 </div>
-                <button className="ghost small">View all</button>
               </div>
               <div className="transaction-toolbar">
                 <input className="search-input" type="search"
@@ -1198,20 +1490,114 @@ function App() {
 
             <article className="panel">
               <div className="panel-header">
-                <div><h3>Spending goals</h3><p className="muted">Targets based on last month (-10%)</p></div>
-                <button className="ghost small">Adjust</button>
+                <div>
+                  <h3>Spending goals</h3>
+                  <p className="muted">Set budgets by category for monthly / quarterly / yearly</p>
+                </div>
+                <button className="ghost small" type="button" onClick={() => setShowGoalForm((p) => !p)}>
+                  {showGoalForm ? "Close" : "Add goal"}
+                </button>
               </div>
-              {spendingGoals.every((g) => g.target === 0) ? (
-                <p className="empty-state">No spend data from last month.</p>
+              {showGoalForm && (
+                <div className="goal-form">
+                  <label>
+                    Goal name
+                    <input
+                      type="text"
+                      name="name"
+                      value={goalForm.name}
+                      onChange={handleGoalFormChange}
+                      placeholder="e.g. Home EMI, Bike fuel, Car service"
+                    />
+                  </label>
+                  <label>
+                    Category
+                    <select name="category" value={goalForm.category} onChange={handleGoalFormChange}>
+                      {goalCategoryOptions.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Period
+                    <select name="period" value={goalForm.period} onChange={handleGoalFormChange}>
+                      {goalPeriods.map((p) => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Target amount (INR)
+                    <input
+                      type="number"
+                      name="amount"
+                      min="0"
+                      step="0.01"
+                      value={goalForm.amount}
+                      onChange={handleGoalFormChange}
+                      placeholder="0.00"
+                    />
+                  </label>
+                  <div className="goal-form-actions">
+                    <button className="primary form-submit" type="button" onClick={handleSaveGoal}>
+                      {editingGoalId ? "Save changes" : "Save goal"}
+                    </button>
+                    {editingGoalId && (
+                      <button
+                        className="ghost form-submit"
+                        type="button"
+                        onClick={() => {
+                          resetGoalForm();
+                          setShowGoalForm(false);
+                        }}
+                      >
+                        Cancel edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {goalProgress.length === 0 ? (
+                <p className="empty-state">No goals yet. Add one to track budgets.</p>
               ) : (
-                spendingGoals.map((goal) => (
-                  <div className="goal" key={goal.label}>
+                goalProgress.map((goal) => (
+                  <div className="goal" key={goal.id}>
                     <div className="goal-head">
-                      <span>{goal.label}</span>
-                      <strong>{formatCurrency.format(goal.currentSpend)} / {formatCurrency.format(goal.target)}</strong>
+                      <span>
+                        {goal.name}{" "}
+                        <span className="muted" style={{ fontSize: "0.76rem" }}>
+                          · {goal.category} · {goal.periodLabel}
+                        </span>
+                      </span>
+                      <strong>
+                        {formatCurrency.format(goal.spent)} / {formatCurrency.format(goal.target)}
+                      </strong>
                     </div>
                     <div className="progress">
                       <span style={{ width: `${goal.progress}%` }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 6 }}>
+                      <span className="muted" style={{ fontSize: "0.78rem" }}>
+                        {goal.progress >= 100 ? "Limit reached" : `${Math.round(goal.progress)}% used`}
+                      </span>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <button className="ghost small" type="button" onClick={() => handleEditGoal(goal)}>
+                          Edit
+                        </button>
+                        <button
+                          className="ghost small"
+                          type="button"
+                          onClick={() => handleRemoveGoal(goal.id)}
+                          aria-label={`Remove goal ${goal.name}`}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

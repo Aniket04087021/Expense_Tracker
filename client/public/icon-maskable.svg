@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="120" y1="90" x2="420" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8a5b" />
+      <stop offset="1" stop-color="#ffb45b" />
+    </linearGradient>
+  </defs>
+
+  <!-- Maskable icon: keep all important content inside the safe zone -->
+  <rect width="512" height="512" fill="#0f172a" />
+  <rect x="96" y="96" width="320" height="320" rx="96" fill="url(#g)" />
+
+  <g fill="#0b1022">
+    <path d="M196 216c0-16 13-28 28-28h64c38 0 64 19 64 50c0 20-11 36-30 44l38 50c5 7 1 16-8 16h-29c-4 0-8-2-10-5l-38-53h-34v30c0 9-7 16-16 16h-24c-9 0-16-7-16-16zm45 33h57c16 0 24-8 24-21c0-14-9-22-24-22h-57z"/>
+  </g>
+
+  <text x="256" y="392" text-anchor="middle" font-family="Poppins, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="52" font-weight="800" fill="#e8eefc" opacity="0.9">
+    Expnse
+  </text>
+</svg>

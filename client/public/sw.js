@@ -1,5 +1,5 @@
 const CACHE_NAME = "expnse-static-v2";
-const ASSETS = ["/", "/manifest.webmanifest", "/vite.svg"];
+const ASSETS = ["/", "/manifest.webmanifest", "/icon.svg", "/icon-maskable.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

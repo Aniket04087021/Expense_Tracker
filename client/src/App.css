@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -1171,6 +1171,37 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .bar span.active { background: linear-gradient(180deg, #fbbf24, #f97316); }
 .bar em { font-style: normal; }
 
+/* BURN (INCOME vs EXPENSE) */
+.burn-chart { display: grid; gap: 12px; }
+.burn-legend { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.burn-meta { margin-left: auto; }
+.burn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+}
+.burn-pill i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.burn-pill.income i { background: var(--green); box-shadow: 0 0 0 3px rgba(52,211,153,0.18); }
+.burn-pill.expense i { background: var(--red); box-shadow: 0 0 0 3px rgba(252,165,165,0.16); }
+.burn-svg {
+  width: 100%;
+  height: 210px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  overflow: hidden;
+}
+.burn-line { stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.burn-line.income { stroke: rgba(52,211,153,0.95); filter: drop-shadow(0 10px 18px rgba(52,211,153,0.18)); }
+.burn-line.expense { stroke: rgba(252,165,165,0.92); filter: drop-shadow(0 10px 18px rgba(252,165,165,0.14)); }
+
 /* DONUT */
 .donut-wrap { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1.2fr); gap: 16px; align-items: center; }
 .donut { width: 165px; height: 165px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto; position: relative; flex-shrink: 0; }
@@ -1218,6 +1249,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   background: rgba(52,211,153,0.08);
   border: 1px solid rgba(52,211,153,0.2);
   }
+.investment-summary strong {
+  color: #eafff6;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  font-size: 1.05rem;
+}
+.investment-summary .card-label { color: rgba(240,244,255,0.80); }
 
 .transaction-title { margin: 0 0 3px; font-weight: 600; font-size: 0.88rem; color: var(--text); }
 .amount { font-weight: 700; font-size: 0.92rem; white-space: nowrap; }
@@ -1231,6 +1268,39 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .goal-head strong { font-weight: 600; color: var(--text); font-size: 0.82rem; }
 .progress { background: rgba(255,255,255,0.07); height: 7px; border-radius: 999px; overflow: hidden; }
 .progress span { display: block; height: 100%; background: linear-gradient(90deg, #a78bfa, #60a5fa); border-radius: 999px; transition: width 0.5s ease; }
+
+.goal-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+}
+.goal-form label { display: grid; gap: 7px; font-size: 0.84rem; color: #c0cce8; font-weight: 500; }
+.goal-form input,
+.goal-form select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+.goal-form input:focus,
+.goal-form select:focus { outline: none; border-color: rgba(125,211,252,0.45); }
+.goal-form select { background-color: rgba(12,18,36,0.96); }
+.goal-form input::placeholder { color: var(--text-muted); }
+
+.goal-form-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
 
 /* FORM */
 .expense-form { display: grid; gap: 16px; }
@@ -1375,9 +1445,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .panel-header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .month-picker { width: 100%; border-radius: var(--r-sm); }
 
-  /* ── Monthly burn: scrollable bar chart ── */
-  .bar-chart-wrapper { overflow-x: auto; overflow-y: visible; }
-  .bar-chart { height: 150px; min-width: 560px; width: 560px; }
+  /* ── Monthly burn (lines) ── */
+  .burn-svg { height: 190px; }
 
   /* ── Category split: stack donut above legend ── */
   .donut-wrap { grid-template-columns: 1fr; justify-items: center; gap: 16px; }
@@ -1425,8 +1494,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .content-grid { gap: 10px; margin-bottom: 12px; }
 
   /* ── Monthly burn ── */
-  .bar-chart { height: 130px; min-width: 480px; width: 480px; }
-  .bar em { font-size: 0.6rem; }
+  .burn-svg { height: 175px; }
 
   /* ── Category split ── */
   .donut { width: 150px; height: 150px; }
@@ -1471,8 +1539,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .top-logo { width: 190px; height: auto; transform: none; }
   .summary-card h2 { font-size: 1.4rem; }
   .top-actions button { font-size: 0.74rem; padding: 8px 8px; }
-  /* Monthly burn: even smaller but still scrollable */
-  .bar-chart { height: 110px; min-width: 420px; width: 420px; }
+  /* Monthly burn */
+  .burn-svg { height: 160px; }
   /* Donut: compact */
   .donut { width: 136px; height: 136px; }
   .donut::after { inset: 14px; }
