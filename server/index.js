@@ -58,8 +58,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-userSchema.index({ email: 1 }, { unique: true });
-
 const transactionSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -76,8 +74,31 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+const goalSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    name: { type: String, required: true, trim: true },
+    category: { type: String, required: true },
+    period: { type: String, enum: ["monthly", "quarterly", "yearly"], required: true },
+    amount: { type: Number, required: true, min: 0 },
+  },
+  { timestamps: true },
+);
+
+const goalContributionSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    goal: { type: mongoose.Schema.Types.ObjectId, ref: "Goal", required: true },
+    amount: { type: Number, required: true, min: 0 },
+    note: { type: String, trim: true, default: "" },
+  },
+  { timestamps: true },
+);
+
 const User = mongoose.model("User", userSchema);
 const Transaction = mongoose.model("Transaction", transactionSchema);
+const Goal = mongoose.model("Goal", goalSchema);
+const GoalContribution = mongoose.model("GoalContribution", goalContributionSchema);
 
 const signToken = (user) =>
   jwt.sign(
@@ -287,6 +308,136 @@ app.delete("/api/transactions/:id", requireAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// ── Goals ──────────────────────────────────────────────────────────────────
+
+app.get("/api/goals", requireAuth, async (req, res) => {
+  try {
+    const goals = await Goal.find({ user: req.user._id }).sort({ createdAt: -1 });
+    res.json(goals);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load goals" });
+  }
+});
+
+app.post("/api/goals", requireAuth, async (req, res) => {
+  try {
+    const { name, category, period, amount } = req.body || {};
+    if (!name || !category || !period || !amount) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const parsedAmount = Number(amount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: "Amount must be a positive number" });
+    }
+    if (!["monthly", "quarterly", "yearly"].includes(period)) {
+      return res.status(400).json({ error: "Invalid period" });
+    }
+    const goal = await Goal.create({
+      user: req.user._id,
+      name: name.trim(),
+      category,
+      period,
+      amount: parsedAmount,
+    });
+    res.status(201).json(goal);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create goal" });
+  }
+});
+
+app.put("/api/goals/:id", requireAuth, async (req, res) => {
+  try {
+    const { name, category, period, amount } = req.body || {};
+    const parsedAmount = Number(amount);
+    if (!name || !category || !period || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: "Invalid fields" });
+    }
+    if (!["monthly", "quarterly", "yearly"].includes(period)) {
+      return res.status(400).json({ error: "Invalid period" });
+    }
+    const updated = await Goal.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { name: name.trim(), category, period, amount: parsedAmount },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: "Goal not found" });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update goal" });
+  }
+});
+
+app.delete("/api/goals/:id", requireAuth, async (req, res) => {
+  try {
+    const deleted = await Goal.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+    if (!deleted) return res.status(404).json({ error: "Goal not found" });
+    // Remove all contributions for this goal too
+    await GoalContribution.deleteMany({ goal: req.params.id, user: req.user._id });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete goal" });
+  }
+});
+
+// ── Goal Contributions ─────────────────────────────────────────────────────
+
+app.get("/api/goals/contributions", requireAuth, async (req, res) => {
+  try {
+    const contributions = await GoalContribution.find({ user: req.user._id }).sort({ createdAt: -1 });
+    res.json(contributions);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load contributions" });
+  }
+});
+
+app.post("/api/goals/:goalId/contributions", requireAuth, async (req, res) => {
+  try {
+    const { amount, note } = req.body || {};
+    const parsedAmount = Number(amount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: "Amount must be a positive number" });
+    }
+    // Verify goal belongs to user
+    const goal = await Goal.findOne({ _id: req.params.goalId, user: req.user._id });
+    if (!goal) return res.status(404).json({ error: "Goal not found" });
+
+    const contribution = await GoalContribution.create({
+      user: req.user._id,
+      goal: req.params.goalId,
+      amount: parsedAmount,
+      note: (note || "").trim(),
+    });
+    res.status(201).json(contribution);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to save contribution" });
+  }
+});
+
+app.delete("/api/goals/contributions/:id", requireAuth, async (req, res) => {
+  try {
+    const deleted = await GoalContribution.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+    if (!deleted) return res.status(404).json({ error: "Contribution not found" });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete contribution" });
+  }
+});
+
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `\n❌  Port ${PORT} is already in use.\n` +
+      `   Stop the other process first, or set a different PORT in your .env file.\n`
+    );
+  } else {
+    console.error("Server error:", err.message);
+  }
+  process.exit(1);
 });

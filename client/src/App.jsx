@@ -42,6 +42,7 @@ const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? "/api" : "https://expense-tracker-1-vb9x.onrender.com/api");
 const TRANSACTIONS_URL = `${API_BASE}/transactions`;
+const GOALS_URL = `${API_BASE}/goals`;
 
 const landingFeatures = [
   {
@@ -293,6 +294,7 @@ function App() {
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [goals, setGoals] = useState([]);
+  const [goalContributions, setGoalContributions] = useState({}); // { goalId: totalContributed }
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [goalForm, setGoalForm] = useState({
@@ -315,6 +317,10 @@ function App() {
     type: "expense",
     date: defaultDate,
   });
+  // Goal contribution via expense form
+  const [goalContribMode, setGoalContribMode] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState("");
+  const [goalContribAmount, setGoalContribAmount] = useState("");
   const isAuthenticated = Boolean(user);
 
   const openAuth = (mode) => {
@@ -322,10 +328,31 @@ function App() {
     setShowAuthModal(true);
   };
 
-  const goalsStorageKey = useMemo(() => {
-    const uid = user?._id || user?.id || user?.email || "anon";
-    return `expnse:goals:v1:${uid}`;
-  }, [user]);
+  const loadGoals = async () => {
+    if (!user) { setGoals([]); setGoalContributions({}); return; }
+    try {
+      const [goalsRes, contribRes] = await Promise.all([
+        apiRequest("/goals"),
+        apiRequest("/goals/contributions"),
+      ]);
+      if (goalsRes.ok) {
+        const data = await goalsRes.json();
+        setGoals(Array.isArray(data) ? data : []);
+      }
+      if (contribRes.ok) {
+        const data = await contribRes.json();
+        const map = {};
+        (Array.isArray(data) ? data : []).forEach((c) => {
+          const gid = c.goal?._id || c.goal;
+          map[gid] = (map[gid] || 0) + c.amount;
+        });
+        setGoalContributions(map);
+      }
+    } catch {
+      setGoals([]);
+      setGoalContributions({});
+    }
+  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -348,26 +375,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(goalsStorageKey);
-      if (!raw) {
-        setGoals([]);
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      setGoals(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      setGoals([]);
-    }
-  }, [goalsStorageKey]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(goalsStorageKey, JSON.stringify(goals));
-    } catch {
-      // ignore storage failures (private mode / quota)
-    }
-  }, [goals, goalsStorageKey]);
+    loadGoals();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
@@ -519,11 +529,13 @@ function App() {
     return goals.map((g) => {
       const { start, end, label } = periodRange(g.period);
       const spent = sumSpendForCategory(g.category, start, end);
+      const contributed = goalContributions[g._id] || 0;
+      const total = spent + contributed;
       const target = Number(g.amount) || 0;
-      const progress = target ? Math.min((spent / target) * 100, 100) : 0;
-      return { ...g, spent, target, progress, periodLabel: label };
+      const progress = target ? Math.min((total / target) * 100, 100) : 0;
+      return { ...g, spent: total, target, progress, periodLabel: label, contributed };
     });
-  }, [goals, normalizedTransactions, selectedMonth]);
+  }, [goals, goalContributions, normalizedTransactions, selectedMonth]);
 
   const handleGoalFormChange = (event) => {
     const { name, value } = event.target;
@@ -535,49 +547,51 @@ function App() {
     setEditingGoalId(null);
   };
 
-  const handleSaveGoal = () => {
+  const handleSaveGoal = async () => {
     const name = goalForm.name.trim();
     const amount = Number(goalForm.amount);
     if (!name || !goalForm.category || !goalForm.period) return;
     if (Number.isNaN(amount) || amount <= 0) return;
 
-    if (editingGoalId) {
-      setGoals((prev) =>
-        prev.map((g) =>
-          g.id === editingGoalId
-            ? {
-                ...g,
-                name,
-                category: goalForm.category,
-                period: goalForm.period,
-                amount,
-                updatedAt: new Date().toISOString(),
-              }
-            : g
-        )
-      );
-    } else {
-      const newGoal = {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        name,
-        category: goalForm.category,
-        period: goalForm.period,
-        amount,
-        createdAt: new Date().toISOString(),
-      };
-      setGoals((prev) => [newGoal, ...prev]);
+    const payload = { name, category: goalForm.category, period: goalForm.period, amount };
+
+    try {
+      if (editingGoalId) {
+        const res = await apiRequest(`/goals/${editingGoalId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setGoals((prev) => prev.map((g) => (g._id === editingGoalId ? updated : g)));
+        }
+      } else {
+        const res = await apiRequest("/goals", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const created = await res.json();
+          setGoals((prev) => [created, ...prev]);
+        }
+      }
+    } catch {
+      // silently fail — UI stays consistent
     }
 
     resetGoalForm();
     setShowGoalForm(false);
   };
 
-  const handleRemoveGoal = (goalId) => {
-    setGoals((prev) => prev.filter((g) => g.id !== goalId));
+  const handleRemoveGoal = async (goalId) => {
+    setGoals((prev) => prev.filter((g) => g._id !== goalId));
+    try {
+      await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
+    } catch { /* ignore */ }
   };
 
   const handleEditGoal = (goal) => {
-    setEditingGoalId(goal.id);
+    setEditingGoalId(goal._id);
     setGoalForm({
       name: goal.name || "",
       category: goal.category || "Home",
@@ -782,7 +796,34 @@ function App() {
       ]);
     }
     setFormState((prev) => ({ ...prev, title: "", amount: "", type: "expense", date: defaultDate }));
+    setGoalContribMode(false);
+    setSelectedGoalId("");
+    setGoalContribAmount("");
     setShowForm(false);
+  };
+
+  const handleGoalContribSubmit = async (event) => {
+    event.preventDefault();
+    const amount = Number(goalContribAmount);
+    if (!selectedGoalId || !amount || amount <= 0) return;
+    // Optimistic update
+    setGoalContributions((prev) => ({
+      ...prev,
+      [selectedGoalId]: (prev[selectedGoalId] || 0) + amount,
+    }));
+    setGoalContribMode(false);
+    setSelectedGoalId("");
+    setGoalContribAmount("");
+    setShowForm(false);
+    try {
+      await apiRequest(`/goals/${selectedGoalId}/contributions`, {
+        method: "POST",
+        body: JSON.stringify({ amount }),
+      });
+    } catch {
+      // Refresh from server to stay consistent
+      loadGoals();
+    }
   };
 
   return (
@@ -1165,57 +1206,134 @@ function App() {
                 <div className="panel-header">
                   <div>
                     <h3>Add expense</h3>
-                    <p className="muted">Log income or spending</p>
+                    <p className="muted">Log income, spending, or allocate to a goal</p>
                   </div>
-                  <button className="ghost small" onClick={() => setShowForm(false)}>Close</button>
+                  <button className="ghost small" onClick={() => { setShowForm(false); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
                 </div>
-                <form className="expense-form" onSubmit={handleSubmit}>
-                  <label>
-                    Title
-                    <input type="text" name="title" placeholder="e.g. Grocery run"
-                      value={formState.title} onChange={handleChange} />
-                  </label>
-                  <label>
-                    Category
-                    <select name="category" value={formState.category} onChange={handleChange}>
-                      <option>Food</option>
-                      <option>Transport</option>
-                      <option>Home</option>
-                      <option>Bike</option>
-                      <option>Car</option>
-                      <option>Travel</option>
-                      <option>Education</option>
-                      <option>Health</option>
-                      <option>Lifestyle</option>
-                      <option>Bills</option>
-                      <option>Investment</option>
-                      <option>Income</option>
-                      <option>Other</option>
-                    </select>
-                  </label>
-                  <label>
-                    Amount
-                    <input type="number" name="amount" min="0" step="0.01" placeholder="0.00"
-                      value={formState.amount} onChange={handleChange} />
-                  </label>
-                  <label>
-                    Type
-                    <div className="pill-group">
-                      {["expense", "income", "investment"].map((t) => (
-                        <button key={t} type="button"
-                          className={formState.type === t ? "pill active" : "pill"}
-                          onClick={() => setFormState((prev) => ({ ...prev, type: t }))}>
-                          {t.charAt(0).toUpperCase() + t.slice(1)}
+
+                {/* Mode toggle: regular or goal */}
+                <div className="pill-group" style={{ marginBottom: 16 }}>
+                  <button type="button"
+                    className={!goalContribMode ? "pill active" : "pill"}
+                    onClick={() => setGoalContribMode(false)}>
+                    Transaction
+                  </button>
+                  <button type="button"
+                    className={goalContribMode ? "pill active" : "pill"}
+                    onClick={() => setGoalContribMode(true)}>
+                    🎯 Allocate to Goal
+                  </button>
+                </div>
+
+                {!goalContribMode ? (
+                  <form className="expense-form" onSubmit={handleSubmit}>
+                    <label>
+                      Title
+                      <input type="text" name="title" placeholder="e.g. Grocery run"
+                        value={formState.title} onChange={handleChange} />
+                    </label>
+                    <label>
+                      Category
+                      <select name="category" value={formState.category} onChange={handleChange}>
+                        <option>Food</option>
+                        <option>Transport</option>
+                        <option>Home</option>
+                        <option>Bike</option>
+                        <option>Car</option>
+                        <option>Travel</option>
+                        <option>Education</option>
+                        <option>Health</option>
+                        <option>Lifestyle</option>
+                        <option>Bills</option>
+                        <option>Investment</option>
+                        <option>Income</option>
+                        <option>Other</option>
+                      </select>
+                    </label>
+                    <label>
+                      Amount
+                      <input type="number" name="amount" min="0" step="0.01" placeholder="0.00"
+                        value={formState.amount} onChange={handleChange} />
+                    </label>
+                    <label>
+                      Type
+                      <div className="pill-group">
+                        {["expense", "income", "investment"].map((t) => (
+                          <button key={t} type="button"
+                            className={formState.type === t ? "pill active" : "pill"}
+                            onClick={() => setFormState((prev) => ({ ...prev, type: t }))}>
+                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </label>
+                    <label>
+                      Date
+                      <input type="date" name="date" value={formState.date} onChange={handleChange} />
+                    </label>
+                    <button className="primary form-submit" type="submit">Save entry</button>
+                  </form>
+                ) : (
+                  <form className="expense-form" onSubmit={handleGoalContribSubmit}>
+                    {goals.length === 0 ? (
+                      <p className="empty-state" style={{ padding: "12px 0" }}>
+                        No goals yet. Create a goal first in the <strong>Spending goals</strong> section below.
+                      </p>
+                    ) : (
+                      <>
+                        <label>
+                          Select Goal
+                          <select value={selectedGoalId} onChange={(e) => setSelectedGoalId(e.target.value)} required>
+                            <option value="">-- Choose a goal --</option>
+                            {goals.map((g) => (
+                              <option key={g._id} value={g._id}>
+                                {g.name} · {g.category} · Target: {formatCurrency.format(g.amount)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        {selectedGoalId && (() => {
+                          const goal = goals.find((g) => g._id === selectedGoalId);
+                          const contrib = goalContributions[selectedGoalId] || 0;
+                          const pct = goal ? Math.min((contrib / goal.amount) * 100, 100) : 0;
+                          return goal ? (
+                            <div className="goal-contrib-preview">
+                              <div className="goal-contrib-info">
+                                <span className="goal-contrib-name">{goal.name}</span>
+                                <span className="goal-contrib-target">Target: {formatCurrency.format(goal.amount)}</span>
+                              </div>
+                              <div className="goal-contrib-row">
+                                <span className="muted" style={{ fontSize: "0.8rem" }}>Already allocated</span>
+                                <strong style={{ color: "#34d399" }}>{formatCurrency.format(contrib)}</strong>
+                              </div>
+                              <div className="progress" style={{ margin: "6px 0" }}>
+                                <span style={{ width: `${pct}%`, background: "#34d399" }} />
+                              </div>
+                              <span className="muted" style={{ fontSize: "0.78rem" }}>{Math.round(pct)}% of goal reached</span>
+                            </div>
+                          ) : null;
+                        })()}
+
+                        <label>
+                          Amount to allocate (INR)
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={goalContribAmount}
+                            onChange={(e) => setGoalContribAmount(e.target.value)}
+                            required
+                          />
+                        </label>
+                        <button className="primary form-submit" type="submit" disabled={!selectedGoalId}>
+                          Allocate to goal
                         </button>
-                      ))}
-                    </div>
-                  </label>
-                  <label>
-                    Date
-                    <input type="date" name="date" value={formState.date} onChange={handleChange} />
-                  </label>
-                  <button className="primary form-submit" type="submit">Save entry</button>
-                </form>
+                      </>
+                    )}
+                  </form>
+                )}
               </article>
             </section>
           )}
@@ -1270,153 +1388,172 @@ function App() {
           </section>
 
           <section className="content-grid">
-            <article className="panel panel-chart">
-              <div className="panel-header">
-                <div>
-                  <h3>Monthly burn</h3>
-                  <p className="muted">Daily income vs expense — income up, expense down</p>
-                </div>
-                <input className="month-picker" type="month" value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)} />
-              </div>
-              <div className="burn-chart">
-                <div className="burn-legend">
-                  <span className="burn-pill income"><i /> Income</span>
-                  <span className="burn-pill expense"><i /> Expense</span>
-                  <span className="burn-meta muted">{monthLabel}</span>
-                </div>
-                {dailySeries.daysInMonth === 0 ? (
-                  <p className="empty-state">Pick a month to see trends.</p>
-                ) : maxDailyMagnitude === 0 ? (
-                  <p className="empty-state">No income/expense activity for this month.</p>
-                ) : (
-                  (() => {
-                    const width = 720;
-                    const height = 220;
-                    const padX = 18;
-                    const padTop = 16;
-                    const padBottom = 18;
-                    const midY = Math.round((padTop + (height - padBottom)) / 2);
-                    const amp = Math.max(10, Math.floor(((height - padTop - padBottom) / 2) - 10));
-                    const days = dailySeries.daysInMonth;
-                    const denom = Math.max(1, days - 1);
-                    const plotW = width - padX * 2;
-                    const mkPoints = (arr, dir) =>
-                      arr
-                        .map((v, idx) => {
-                          const x = Math.round(padX + (idx / denom) * plotW);
-                          const y =
-                            dir === "up"
-                              ? Math.round(midY - (v / maxDailyMagnitude) * amp)
-                              : Math.round(midY + (v / maxDailyMagnitude) * amp);
-                          return `${x},${y}`;
-                        })
-                        .join(" ");
-
-                    const incomePoints = mkPoints(dailySeries.income, "up");
-                    const expensePoints = mkPoints(dailySeries.expense, "down");
-
-                    return (
-                      <svg
-                        className="burn-svg"
-                        viewBox={`0 0 ${width} ${height}`}
-                        role="img"
-                        aria-label="Income and expense trend lines for the selected month"
-                        preserveAspectRatio="none"
-                      >
-                        <defs>
-                          <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0" stopColor="rgba(52,211,153,0.30)" />
-                            <stop offset="1" stopColor="rgba(52,211,153,0.00)" />
-                          </linearGradient>
-                          <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0" stopColor="rgba(252,165,165,0.00)" />
-                            <stop offset="1" stopColor="rgba(252,165,165,0.26)" />
-                          </linearGradient>
-                        </defs>
-
-                        {/* grid */}
-                        {[0.25, 0.5, 0.75].map((t) => {
-                          const y = Math.round(padTop + (height - padTop - padBottom) * t);
-                          return (
-                            <line
-                              key={t}
-                              x1={padX}
-                              y1={y}
-                              x2={width - padX}
-                              y2={y}
-                              stroke="rgba(255,255,255,0.08)"
-                              strokeWidth="1"
-                            />
-                          );
-                        })}
-                        <line
-                          x1={padX}
-                          y1={midY}
-                          x2={width - padX}
-                          y2={midY}
-                          stroke="rgba(255,255,255,0.14)"
-                          strokeWidth="1"
-                        />
-
-                        {/* income area */}
-                        <path
-                          d={`M ${incomePoints} L ${width - padX},${midY} L ${padX},${midY} Z`}
-                          fill="url(#incomeFill)"
-                        />
-                        {/* expense area */}
-                        <path
-                          d={`M ${expensePoints} L ${width - padX},${midY} L ${padX},${midY} Z`}
-                          fill="url(#expenseFill)"
-                        />
-
-                        <polyline className="burn-line income" points={incomePoints} fill="none" />
-                        <polyline className="burn-line expense" points={expensePoints} fill="none" />
-                      </svg>
-                    );
-                  })()
-                )}
-              </div>
-            </article>
-
-            <article className="panel">
-              <div className="panel-header">
-                <div>
-                  <h3>Category split</h3>
-                  <p className="muted">Where your money goes</p>
-                </div>
-              </div>
-              <div className="donut-wrap">
-                <div className="donut" style={{
-                  background: totalSpend
-                    ? `conic-gradient(${categoryBreakdown.map((item, index) => {
-                        const start = categoryBreakdown.slice(0, index).reduce((sum, e) => sum + e.value, 0) / totalSpend;
-                        const end = (start + item.value / totalSpend) * 360;
-                        return `${item.color} ${start * 360}deg ${end}deg`;
-                      }).join(",")})`
-                    : "conic-gradient(#1f2937 0deg 360deg)",
-                }}>
-                  <div className="donut-center">
-                    <p>Total spend</p>
-                    <strong>{formatCurrency.format(totalSpend)}</strong>
+            <article className="panel panel-chart burn-panel">
+              {/* header */}
+              <div className="burn-panel-header">
+                <div className="burn-panel-title-group">
+                  <div className="burn-panel-icon">🔥</div>
+                  <div>
+                    <h3 className="burn-panel-title">Monthly Burn</h3>
+                    <p className="burn-panel-sub">Daily income vs expense · {monthLabel}</p>
                   </div>
                 </div>
-                <div className="legend">
-                  {categoryBreakdown.length === 0 ? (
-                    <p className="empty-state">No expense categories yet.</p>
-                  ) : (
-                    categoryBreakdown.map((item) => (
-                      <div className="legend-item" key={item.label}>
-                        <span style={{ background: item.color }} />
-                        <div>
-                          <p>{item.label}</p>
-                          <strong>{formatCurrency.format(item.value)}</strong>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                <div className="burn-header-right">
+                  <div className="burn-stat-chip income-chip">
+                    <span className="chip-dot" />
+                    <span className="chip-label">Income</span>
+                    <strong className="chip-val">{formatCurrency.format(
+                      dailySeries.income.reduce((a, b) => a + b, 0)
+                    )}</strong>
+                  </div>
+                  <div className="burn-stat-chip expense-chip">
+                    <span className="chip-dot" />
+                    <span className="chip-label">Expense</span>
+                    <strong className="chip-val">{formatCurrency.format(
+                      dailySeries.expense.reduce((a, b) => a + b, 0)
+                    )}</strong>
+                  </div>
+                  <input className="month-picker" type="month" value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)} />
                 </div>
               </div>
+
+              {/* chart body */}
+              {dailySeries.daysInMonth === 0 ? (
+                <p className="empty-state">Pick a month to see trends.</p>
+              ) : maxDailyMagnitude === 0 ? (
+                <p className="empty-state">No income/expense activity for this month.</p>
+              ) : (
+                (() => {
+                  const days = dailySeries.daysInMonth;
+                  const BAR_MAX_H = 108;
+                  return (
+                    <div className="burnv2-wrap">
+                      {/* y-axis */}
+                      <div className="burnv2-yaxis">
+                        <span className="burnv2-ylab green">{formatCurrency.format(maxDailyMagnitude)}</span>
+                        <span className="burnv2-ylab mid">0</span>
+                        <span className="burnv2-ylab red">{formatCurrency.format(maxDailyMagnitude)}</span>
+                      </div>
+
+                      {/* scrollable bars */}
+                      <div className="burnv2-scroll">
+                        {/* grid lines */}
+                        <div className="burnv2-grid">
+                          <div className="burnv2-gridline top" />
+                          <div className="burnv2-gridline mid" />
+                          <div className="burnv2-gridline bot" />
+                          <div className="burnv2-baseline" />
+                        </div>
+
+                        <div className="burnv2-bars">
+                          {Array.from({ length: days }, (_, i) => {
+                            const inc = dailySeries.income[i] || 0;
+                            const exp = dailySeries.expense[i] || 0;
+                            const incH = maxDailyMagnitude ? Math.round((inc / maxDailyMagnitude) * BAR_MAX_H) : 0;
+                            const expH = maxDailyMagnitude ? Math.round((exp / maxDailyMagnitude) * BAR_MAX_H) : 0;
+                            const hasActivity = inc > 0 || exp > 0;
+                            return (
+                              <div className={`burnv2-col${hasActivity ? " active" : ""}`} key={i}>
+                                {/* tooltip */}
+                                <div className="burnv2-tooltip">
+                                  <span className="tt-day">Day {i + 1}</span>
+                                  <span className="tt-row inc">▲ {formatCurrency.format(inc)}</span>
+                                  <span className="tt-row exp">▼ {formatCurrency.format(exp)}</span>
+                                </div>
+                                {/* income bar UP */}
+                                <div className="burnv2-half up">
+                                  {incH > 0 && (
+                                    <div className="burnv2-bar inc" style={{ height: incH }} />
+                                  )}
+                                </div>
+                                {/* expense bar DOWN */}
+                                <div className="burnv2-half dn">
+                                  {expH > 0 && (
+                                    <div className="burnv2-bar exp" style={{ height: expH }} />
+                                  )}
+                                </div>
+                                <span className="burnv2-day">{i + 1}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </article>
+
+            <article className="panel catpanel">
+              <div className="catpanel-header">
+                <div className="catpanel-title-group">
+                  <div className="catpanel-icon">🎯</div>
+                  <div>
+                    <h3 className="catpanel-title">Category Split</h3>
+                    <p className="catpanel-sub">Where your money goes</p>
+                  </div>
+                </div>
+                {categoryBreakdown.length > 0 && (
+                  <div className="catpanel-total-badge">
+                    <span className="ctb-label">Total Spent</span>
+                    <strong className="ctb-val">{formatCurrency.format(totalSpend)}</strong>
+                  </div>
+                )}
+              </div>
+
+              {categoryBreakdown.length === 0 ? (
+                <p className="empty-state">No expense categories yet.</p>
+              ) : (
+                <div className="catpanel-body">
+                  {/* Enhanced donut */}
+                  <div className="catdonut-wrap">
+                    <div className="catdonut" style={{
+                      background: `conic-gradient(${categoryBreakdown.map((item, index) => {
+                        const start = categoryBreakdown.slice(0, index).reduce((s, e) => s + e.value, 0) / totalSpend;
+                        const end = (start + item.value / totalSpend) * 360;
+                        return `${item.color} ${start * 360}deg ${end}deg`;
+                      }).join(",")})`,
+                    }}>
+                      <div className="catdonut-hole">
+                        <p className="catdonut-label">Total Spend</p>
+                        <strong className="catdonut-amount">{formatCurrency.format(totalSpend)}</strong>
+                        <span className="catdonut-count">{categoryBreakdown.length} categories</span>
+                      </div>
+                    </div>
+                    {/* glow ring */}
+                    <div className="catdonut-glow" />
+                  </div>
+
+                  {/* legend with horizontal bars */}
+                  <div className="catlegend">
+                    {categoryBreakdown.map((item) => {
+                      const pct = totalSpend ? Math.round((item.value / totalSpend) * 100) : 0;
+                      return (
+                        <div className="catleg-item" key={item.label}>
+                          <div className="catleg-top">
+                            <div className="catleg-left">
+                              <span className="catleg-dot" style={{ background: item.color, boxShadow: `0 0 8px ${item.color}88` }} />
+                              <span className="catleg-name">{item.label}</span>
+                            </div>
+                            <div className="catleg-right">
+                              <span className="catleg-pct" style={{ color: item.color }}>{pct}%</span>
+                              <strong className="catleg-amt">{formatCurrency.format(item.value)}</strong>
+                            </div>
+                          </div>
+                          <div className="catleg-bar-track">
+                            <div className="catleg-bar-fill" style={{
+                              width: `${pct}%`,
+                              background: `linear-gradient(90deg, ${item.color}99, ${item.color})`,
+                              boxShadow: `0 0 10px ${item.color}55`,
+                            }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </article>
           </section>
 
@@ -1566,7 +1703,7 @@ function App() {
                 <p className="empty-state">No goals yet. Add one to track budgets.</p>
               ) : (
                 goalProgress.map((goal) => (
-                  <div className="goal" key={goal.id}>
+                  <div className="goal" key={goal._id}>
                     <div className="goal-head">
                       <span>
                         {goal.name}{" "}
@@ -1592,7 +1729,7 @@ function App() {
                         <button
                           className="ghost small"
                           type="button"
-                          onClick={() => handleRemoveGoal(goal.id)}
+                          onClick={() => handleRemoveGoal(goal._id)}
                           aria-label={`Remove goal ${goal.name}`}
                         >
                           Remove
