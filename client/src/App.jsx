@@ -245,42 +245,6 @@ function AuthModal({ mode, onClose, onSuccess }) {
   );
 }
 
-function InstallHelpModal({ onClose }) {
-  return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-card">
-        <div className="modal-header">
-          <div className="brand">
-            <img src={logo} alt="Expnse" className="logo" />
-          </div>
-          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
-        </div>
-        <p className="modal-subtitle">
-          Install Expnse on your phone like an app.
-        </p>
-        <div className="expense-form" style={{ gap: 12 }}>
-          <div>
-            <strong>Android (Chrome)</strong>
-            <p className="muted" style={{ marginTop: 6 }}>
-              Tap the browser menu (⋮) → <strong>Install app</strong> / <strong>Add to Home screen</strong>.
-            </p>
-          </div>
-          <div>
-            <strong>iPhone / iPad (Safari)</strong>
-            <p className="muted" style={{ marginTop: 6 }}>
-              Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.
-            </p>
-          </div>
-          <button className="primary form-submit" type="button" onClick={onClose}>
-            Got it
-          </button>
-        </div>
-        <p className="fine-print">Tip: the install option appears after a few seconds and a reload sometimes.</p>
-      </div>
-    </div>
-  );
-}
-
 function App() {
   const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -292,7 +256,6 @@ function App() {
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [installingPwa, setInstallingPwa] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
-  const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [goals, setGoals] = useState([]);
   const [goalContributions, setGoalContributions] = useState({}); // { goalId: totalContributed }
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -658,16 +621,13 @@ function App() {
   };
 
   const handleInstallApp = async () => {
-    if (isAppInstalled) return;
-    if (!deferredInstallPrompt) {
-      setShowInstallHelp(true);
-      return;
-    }
+    if (isAppInstalled || !deferredInstallPrompt) return;
     setInstallingPwa(true);
     deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
+    const { outcome } = await deferredInstallPrompt.userChoice;
     setDeferredInstallPrompt(null);
     setInstallingPwa(false);
+    if (outcome === "accepted") setIsAppInstalled(true);
   };
 
   const formatPlainAmount = (value) =>
@@ -838,7 +798,6 @@ function App() {
           }}
         />
       )}
-      {showInstallHelp && <InstallHelpModal onClose={() => setShowInstallHelp(false)} />}
 
       {!isAuthenticated ? (
         <>
@@ -858,10 +817,28 @@ function App() {
             </button>
             <div className="nav-menu">
               <div className="nav-links">
-                <a href="#features">Features</a>
-                <a href="#export">Export</a>
-                <a href="#insights">Insights</a>
-                <a href="#download">Download</a>
+                {[
+                  { label: "Features", id: "features" },
+                  { label: "Export", id: "export" },
+                  { label: "Insights", id: "insights" },
+                  { label: "Download", id: "download" },
+                ].map(({ label, id }) => (
+                  <a
+                    key={id}
+                    href={`#${id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const el = document.getElementById(id);
+                      if (!el) return;
+                      const navH = 60 + 12 + 20; // navbar height + top offset + extra gap
+                      const top = el.getBoundingClientRect().top + window.scrollY - navH;
+                      window.scrollTo({ top, behavior: "smooth" });
+                      setShowNavMenu(false);
+                    }}
+                  >
+                    {label}
+                  </a>
+                ))}
               </div>
               <div className="nav-actions">
                 <button className="ghost" onClick={() => openAuth("login")}>Login</button>
@@ -1114,27 +1091,46 @@ function App() {
                 <button className="ghost" onClick={() => openAuth("login")}>
                   Already have an account
                 </button>
-                <button
-                  className="ghost"
-                  onClick={handleInstallApp}
-                  disabled={installingPwa || isAppInstalled}
-                >
-                  {isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install on mobile"}
-                </button>
               </div>
               <div className="cta-platform-cards">
-                <div className="platform-card">
-                  <div className="platform-icon">🌐</div>
+                {/* Web app */}
+                <div className="platform-card platform-card--web">
+                  <div className="platform-card-top">
+                    <div className="platform-icon-wrap platform-icon-wrap--web">🌐</div>
+                    <span className="platform-badge platform-badge--live">Live</span>
+                  </div>
                   <strong>Web app</strong>
-                  <p className="muted">Available now</p>
+                  <p className="muted">Available now · Works in any browser</p>
                   <button className="primary platform-btn" onClick={() => openAuth("signup")}>
-                    Start on web
+                    Start on web →
                   </button>
                 </div>
-                <div className="platform-card dim">
-                  <div className="platform-icon">💻</div>
+
+                {/* Mobile PWA */}
+                <div className="platform-card platform-card--mobile">
+                  <div className="platform-card-top">
+                    <div className="platform-icon-wrap platform-icon-wrap--mobile">📱</div>
+                    <span className="platform-badge platform-badge--live">Live</span>
+                  </div>
+                  <strong>Mobile app</strong>
+                  <p className="muted">Install on home screen · iOS &amp; Android</p>
+                  <button
+                    className="primary platform-btn platform-btn--mobile"
+                    onClick={handleInstallApp}
+                    disabled={installingPwa || isAppInstalled}
+                  >
+                    {isAppInstalled ? "✓ App installed" : installingPwa ? "Installing…" : "Install on mobile →"}
+                  </button>
+                </div>
+
+                {/* Desktop app */}
+                <div className="platform-card platform-card--desktop dim">
+                  <div className="platform-card-top">
+                    <div className="platform-icon-wrap platform-icon-wrap--desktop">💻</div>
+                    <span className="platform-badge platform-badge--soon">Soon</span>
+                  </div>
                   <strong>Desktop app</strong>
-                  <p className="muted">Coming soon</p>
+                  <p className="muted">Native app for Mac &amp; Windows</p>
                   <button className="ghost platform-btn" disabled>Join waitlist</button>
                 </div>
               </div>
@@ -1156,9 +1152,18 @@ function App() {
               <div className="footer-links-grid">
                 <div className="footer-col">
                   <strong>Product</strong>
-                  <a href="#features">Features</a>
-                  <a href="#export">PDF Export</a>
-                  <a href="#download">Download</a>
+                  {[
+                    { label: "Features", id: "features" },
+                    { label: "PDF Export", id: "export" },
+                    { label: "Download", id: "download" },
+                  ].map(({ label, id }) => (
+                    <a key={id} href={`#${id}`} onClick={(e) => {
+                      e.preventDefault();
+                      const el = document.getElementById(id);
+                      if (!el) return;
+                      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 92, behavior: "smooth" });
+                    }}>{label}</a>
+                  ))}
                 </div>
                 <div className="footer-col">
                   <strong>Company</strong>
