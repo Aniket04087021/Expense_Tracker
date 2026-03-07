@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./App.css";
-import logo from "./assets/logo.png";
+import logo from "/logo expense.png";
 
 const categoryPalette = {
   Food: "#ff8a5b",

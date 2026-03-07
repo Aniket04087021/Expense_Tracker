@@ -114,15 +114,31 @@ p { margin: 0; }
 }
 
 .landing-nav .brand {
-  height: 40px;
-  overflow: visible;
+  height: 60px;
+  max-height: 60px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .landing-nav .logo {
-  width: 130px;
-  height: auto;
-  transform: scale(1.65);
-  transform-origin: left center;
+  width: 80px !important;
+  height: auto !important;
+  max-width: 80px;
+  object-fit: contain;
+  border-radius: 10px;
+  transform: none !important;
+  transform-origin: unset !important;
+  display: block;
+}
+
+/* Footer logo — same size as navbar */
+.footer-brand .logo {
+  width: 80px !important;
+  height: auto !important;
+  max-width: 80px;
+  object-fit: contain;
+  border-radius: 10px;
+  transform: none !important;
 }
 
 .brand-mark {
@@ -609,6 +625,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.modal-header .brand .logo {
+  width: 40px !important;
+  height: 40px !important;
+  object-fit: contain;
+  border-radius: 8px;
+  transform: none !important;
 }
 
 .modal-close {
@@ -1195,11 +1219,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .top-actions { display: flex; gap: 10px; flex-shrink: 0; }
 .top-logo {
   display: block;
-  width: 130px;
-  height: auto;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
-  transform: scale(1.65);
-  transform-origin: left center;
+  border-radius: 10px;
+  transform: none;
 }
 
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 24px; }
@@ -2108,8 +2132,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     min-height: 54px;
   }
 
-  .landing-nav .logo { width: 150px; height: auto; transform: scale(1.55); }
-  .top-logo { width: 220px; transform: none; }
+  .landing-nav .logo { width: 70px !important; height: auto !important; border-radius: 9px; transform: none !important; }
+  .footer-brand .logo { width: 70px !important; height: auto !important; }
+  .top-logo { width: 44px; height: 44px; transform: none; }
 
   .nav-menu {
     display: none;
@@ -2219,16 +2244,16 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* ── Dashboard top bar ── */
   .top-bar { gap: 6px; padding: 10px 12px; margin: 0 -12px 14px; width: calc(100% + 24px); }
-  .top-bar h1 { font-size: 1.2rem; }
-  .top-actions { grid-template-columns: 1fr 1fr; gap: 7px; }
-  .top-actions button { font-size: 0.76rem; padding: 8px 8px; }
+  .top-bar h1 { font-size: 1.1rem; }
+  .top-logo { width: 38px; height: 38px; transform: none; }
+  .top-actions { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .top-actions button { font-size: 0.74rem; padding: 8px 8px; }
 
-  /* ── Summary cards: single column ── */
-  .summary-grid { grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
-  .summary-card { padding: 14px 16px; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .summary-card > div:first-child { flex: 1; }
-  .summary-card h2 { font-size: 1.5rem; margin: 2px 0 0; }
-  .summary-detail { font-size: 0.78rem; padding-top: 6px; }
+  /* ── Summary cards: single column, vertical ── */
+  .summary-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .summary-card { padding: 12px 14px; flex-direction: column; gap: 6px; }
+  .summary-card h2 { font-size: 1.3rem; margin: 2px 0 0; }
+  .summary-detail { font-size: 0.76rem; }
 
   /* ── Panels ── */
   .panel { padding: 12px; border-radius: var(--r-md); }
@@ -2238,8 +2263,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .burn-panel { padding: 12px 12px 8px; }
   .burn-panel-header { margin-bottom: 10px; gap: 8px; }
   .burn-panel-icon { width: 34px; height: 34px; font-size: 0.9rem; }
-  .burn-panel-title { font-size: 0.9rem; }
-  .burn-stat-chip { font-size: 0.68rem; padding: 5px 7px; gap: 5px; }
+  .burn-panel-title { font-size: 0.88rem; }
+  .burn-stat-chip { font-size: 0.66rem; padding: 5px 7px; gap: 5px; }
   .burnv2-wrap { min-height: 180px; gap: 4px; }
   .burnv2-bars { height: 180px; gap: 3px; }
   .burnv2-col { width: 13px; }
@@ -2249,19 +2274,19 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   /* ── Category split v2 ── */
   .catpanel { padding: 12px; }
   .catpanel-icon { width: 34px; height: 34px; font-size: 0.9rem; }
-  .catpanel-title { font-size: 0.9rem; }
-  .catdonut-wrap, .catdonut { width: 136px; height: 136px; }
+  .catpanel-title { font-size: 0.88rem; }
+  .catdonut-wrap, .catdonut { width: 130px; height: 130px; }
   .catdonut-hole { inset: 20px; }
-  .catdonut-amount { font-size: 0.78rem; }
+  .catdonut-amount { font-size: 0.76rem; }
   .catleg-item { padding: 6px 8px; gap: 4px; }
-  .catleg-name { font-size: 0.74rem; }
-  .catleg-amt { font-size: 0.72rem; }
+  .catleg-name { font-size: 0.72rem; }
+  .catleg-amt { font-size: 0.7rem; }
   .catleg-right { gap: 6px; }
 
   /* ── Transactions ── */
   .transaction { flex-wrap: wrap; gap: 6px; }
   .transaction-title { font-size: 0.82rem; }
-  .amount { font-size: 0.84rem; }
+  .amount { font-size: 0.82rem; }
 
   /* ── Misc ── */
   .stat-row { grid-template-columns: 1fr; }
@@ -2278,18 +2303,20 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .ghost.small { padding: 6px 10px; font-size: 0.74rem; }
   .page-indicator { font-size: 0.72rem; }
   .month-picker { font-size: 0.8rem; padding: 8px 10px; }
+  .modal-card { padding: 20px 16px; }
 }
 
 @media (max-width: 380px) {
   .app { padding: 10px 10px 56px; }
   .hero-title { font-size: 1.8rem; }
   .logo { width: 170px; height: auto; }
-  .landing-nav .logo { width: 140px; transform: scale(1.45); }
+  .landing-nav .logo { width: 60px !important; height: auto !important; border-radius: 8px; transform: none !important; }
+  .footer-brand .logo { width: 60px !important; height: auto !important; }
   .brand strong { font-size: 0.95rem; }
   .brand-mark { width: 32px; height: 32px; font-size: 0.78rem; }
   .top-bar { padding: 8px 10px; margin: 0 -10px 12px; width: calc(100% + 20px); }
-  .top-bar h1 { font-size: 1.1rem; }
-  .top-logo { width: 180px; height: auto; transform: none; }
+  .top-bar h1 { font-size: 1rem; }
+  .top-logo { width: 34px; height: 34px; transform: none; }
   .top-actions button { font-size: 0.7rem; padding: 8px 6px; }
   .summary-card h2 { font-size: 1.3rem; }
 
