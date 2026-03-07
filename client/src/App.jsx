@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./App.css";
-import logo from "/logo expense.png";
+const logo = "/logo expense.png";
 
 const categoryPalette = {
   Food: "#ff8a5b",
@@ -284,6 +284,12 @@ function App() {
   const [goalContribMode, setGoalContribMode] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [goalContribAmount, setGoalContribAmount] = useState("");
+
+  // ── Money Story state ──
+  const [storyPeriod, setStoryPeriod] = useState("monthly");
+  const storyCardRef = useRef(null);
+  const [storyDownloading, setStoryDownloading] = useState(false);
+
   const isAuthenticated = Boolean(user);
 
   const openAuth = (mode) => {
@@ -431,6 +437,16 @@ function App() {
     [categoryBreakdown]
   );
 
+  // ── Financial Health Score (0-100) ──
+  const healthScore = useMemo(() => {
+    if (totals.income === 0) return null;
+    const savingsRate = Math.max(0, (totals.income - totals.spend) / totals.income);
+    const investmentRatio = Math.min(1, totals.investment / Math.max(totals.income, 1));
+    const spendControl = Math.max(0, 1 - (totals.spend / Math.max(totals.income, 1)));
+    const score = Math.round((savingsRate * 50) + (investmentRatio * 25) + (spendControl * 25));
+    return Math.min(100, Math.max(0, score));
+  }, [totals]);
+
   const dailySeries = useMemo(() => {
     const [year, month] = selectedMonth.split("-").map(Number);
     if (!year || !month) return { income: [], expense: [], daysInMonth: 0 };
@@ -571,6 +587,102 @@ function App() {
     return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   }, [selectedMonth]);
 
+  // ── Story computed data (needs monthLabel, normalizedTransactions) ──
+  const storyData = useMemo(() => {
+    const now = new Date();
+    const [selYear, selMonth] = selectedMonth.split("-").map(Number);
+
+    if (storyPeriod === "monthly") {
+      const tx = normalizedTransactions.filter(e => {
+        const d = new Date(e.date);
+        return d.getFullYear() === selYear && d.getMonth() + 1 === selMonth;
+      });
+      const income   = tx.filter(e=>e.type==="income").reduce((s,e)=>s+e.amount,0);
+      const spend    = tx.filter(e=>e.type==="expense").reduce((s,e)=>s+Math.abs(e.amount),0);
+      const invested = tx.filter(e=>e.type==="investment").reduce((s,e)=>s+Math.abs(e.amount),0);
+      const saved    = Math.max(0, income - spend);
+      const savRate  = income > 0 ? Math.round((saved/income)*100) : 0;
+      const catMap = {};
+      tx.filter(e=>e.type==="expense").forEach(e => { catMap[e.category||"Other"]=(catMap[e.category||"Other"]||0)+Math.abs(e.amount); });
+      const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+      const expenses = tx.filter(e=>e.type==="expense").sort((a,b)=>Math.abs(b.amount)-Math.abs(a.amount));
+      const incomes  = tx.filter(e=>e.type==="income").sort((a,b)=>b.amount-a.amount);
+      const dayMap = {};
+      tx.filter(e=>e.type==="expense").forEach(e => { const d=new Date(e.date).toLocaleDateString("en-IN",{day:"numeric",month:"short"}); dayMap[d]=(dayMap[d]||0)+Math.abs(e.amount); });
+      const topDay = Object.entries(dayMap).sort((a,b)=>b[1]-a[1])[0];
+      const catCount = {};
+      tx.filter(e=>e.type==="expense").forEach(e => { catCount[e.category||"Other"]=(catCount[e.category||"Other"]||0)+1; });
+      const topCatByCount = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0];
+      const dowMap = {};
+      tx.forEach(e => { const dow=new Date(e.date).toLocaleDateString("en-IN",{weekday:"long"}); dowMap[dow]=(dowMap[dow]||0)+1; });
+      const topDow = Object.entries(dowMap).sort((a,b)=>b[1]-a[1])[0];
+      let personality = null;
+      if (income > 0) {
+        const foodPct = (catMap["Food"]||0)/Math.max(spend,1)*100;
+        const shopPct = ((catMap["Shopping"]||0)+(catMap["Entertainment"]||0))/Math.max(spend,1)*100;
+        if      (savRate>=40)  personality={label:"Smart Saver 🧠",   desc:"You save more than you spend. Excellent discipline!"};
+        else if (foodPct>=30)  personality={label:"Food Lover 🍕",     desc:"Food is your biggest passion — and expense!"};
+        else if (shopPct>=25)  personality={label:"Shopaholic 🛍️",    desc:"Retail therapy is real. Consider a shopping budget."};
+        else if (savRate>=20)  personality={label:"Balanced Spender ⚖️",desc:"You balance spending and saving well."};
+        else                   personality={label:"High Spender 💸",   desc:"Your expenses are high. Review your budget."};
+      }
+      const expTx = tx.filter(e=>e.type==="expense");
+      const avgTx = expTx.length > 0 ? spend/expTx.length : 0;
+      return { period:"monthly", label:monthLabel, income, spend, saved, invested, savRate,
+        cats, topCat:cats[0], biggestExpense:expenses[0], biggestIncome:incomes[0],
+        topDay, topCatByCount, topDow, personality, txCount:tx.length, expenseTxCount:expTx.length, avgTx };
+    }
+
+    if (storyPeriod === "weekly") {
+      const sow = (d) => { const dd=new Date(d); dd.setDate(dd.getDate()-dd.getDay()); dd.setHours(0,0,0,0); return dd; };
+      const thisWeekStart = sow(now);
+      const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
+      const lastWeekEnd   = new Date(thisWeekStart); lastWeekEnd.setMilliseconds(-1);
+      const inW = (e,s,en) => { const d=new Date(e.date); return d>=s && d<=en; };
+      const thisWTx = normalizedTransactions.filter(e=>inW(e,thisWeekStart,now));
+      const lastWTx = normalizedTransactions.filter(e=>inW(e,lastWeekStart,lastWeekEnd));
+      const wSpend  = (txs)=>txs.filter(e=>e.type==="expense").reduce((s,e)=>s+Math.abs(e.amount),0);
+      const wIncome = (txs)=>txs.filter(e=>e.type==="income").reduce((s,e)=>s+e.amount,0);
+      const thisSpend=wSpend(thisWTx), lastSpend=wSpend(lastWTx), thisIncome=wIncome(thisWTx);
+      const catMap={};
+      thisWTx.filter(e=>e.type==="expense").forEach(e=>{catMap[e.category||"Other"]=(catMap[e.category||"Other"]||0)+Math.abs(e.amount);});
+      const cats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+      const dayMap={};
+      thisWTx.filter(e=>e.type==="expense").forEach(e=>{const dow=new Date(e.date).toLocaleDateString("en-IN",{weekday:"long"});dayMap[dow]=(dayMap[dow]||0)+Math.abs(e.amount);});
+      const topDay=Object.entries(dayMap).sort((a,b)=>b[1]-a[1])[0];
+      const spendDiff=thisSpend-lastSpend;
+      const spendDiffPct=lastSpend>0?Math.round(Math.abs(spendDiff)/lastSpend*100):null;
+      const saved=Math.max(0,thisIncome-thisSpend);
+      const savRate=thisIncome>0?Math.round((saved/thisIncome)*100):0;
+      return { period:"weekly", label:"This Week", income:thisIncome, spend:thisSpend, saved, savRate,
+        cats, topCat:cats[0], topDay, lastSpend, spendDiff, spendDiffPct,
+        txCount:thisWTx.length, expenseTxCount:thisWTx.filter(e=>e.type==="expense").length };
+    }
+
+    if (storyPeriod === "yearly") {
+      const year=selYear;
+      const tx=normalizedTransactions.filter(e=>new Date(e.date).getFullYear()===year);
+      const income=tx.filter(e=>e.type==="income").reduce((s,e)=>s+e.amount,0);
+      const spend=tx.filter(e=>e.type==="expense").reduce((s,e)=>s+Math.abs(e.amount),0);
+      const invested=tx.filter(e=>e.type==="investment").reduce((s,e)=>s+Math.abs(e.amount),0);
+      const saved=Math.max(0,income-spend);
+      const savRate=income>0?Math.round((saved/income)*100):0;
+      const catMap={};
+      tx.filter(e=>e.type==="expense").forEach(e=>{catMap[e.category||"Other"]=(catMap[e.category||"Other"]||0)+Math.abs(e.amount);});
+      const cats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+      const mSpend=Array(12).fill(0), mInc=Array(12).fill(0);
+      tx.forEach(e=>{const m=new Date(e.date).getMonth();if(e.type==="expense")mSpend[m]+=Math.abs(e.amount);if(e.type==="income")mInc[m]+=e.amount;});
+      const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const maxSM=mSpend.indexOf(Math.max(...mSpend));
+      const savs=mInc.map((v,i)=>v-mSpend[i]);
+      const bestSM=savs.indexOf(Math.max(...savs));
+      return { period:"yearly", label:`${year}`, income, spend, saved, invested, savRate,
+        cats, topCat:cats[0], txCount:tx.length, expenseTxCount:tx.filter(e=>e.type==="expense").length,
+        mostExpensiveMonth:MN[maxSM], bestSaveMonth:MN[bestSM] };
+    }
+    return null;
+  }, [storyPeriod, normalizedTransactions, selectedMonth, monthLabel]); // eslint-disable-line
+
   const filteredTransactions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return normalizedTransactions;
@@ -618,6 +730,50 @@ function App() {
     } finally {
       setUser(null);
     }
+  };
+
+  // ── Download story card as PNG ──
+  const downloadStoryCard = async () => {
+    const el = storyCardRef.current;
+    if (!el) return;
+    setStoryDownloading(true);
+    try {
+      const { default: html2canvas } = await import("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.esm.min.js");
+      const canvas = await html2canvas(el, { backgroundColor: "#0d0820", scale: 2, useCORS: true, logging: false });
+      const link = document.createElement("a");
+      link.download = `expnse-${storyPeriod}-story.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      alert("Download failed — try screenshotting the card manually.");
+    } finally {
+      setStoryDownloading(false);
+    }
+  };
+
+  // ── Share story as formatted text ──
+  const shareStory = (platform) => {
+    if (!storyData) return;
+    const { income, spend, saved, savRate, txCount, topCat, label } = storyData;
+    const parts = [
+      `My ${label} Money Story 📊`,
+      ``,
+      `💰 Income: ${formatCurrency.format(income)}`,
+      `💸 Spent:  ${formatCurrency.format(spend)}`,
+      `🏦 Saved:  ${formatCurrency.format(saved)}`,
+      `📈 Savings Rate: ${savRate}%`,
+      topCat ? `🏆 Top Category: ${topCat[0]}` : null,
+      txCount ? `🧾 Transactions: ${txCount}` : null,
+      ``,
+      `Tracked with Expnse 🔥`,
+    ].filter(Boolean).join("\n");
+    const enc = encodeURIComponent(parts);
+    const urls = {
+      twitter:  `https://twitter.com/intent/tweet?text=${enc}`,
+      whatsapp: `https://wa.me/?text=${enc}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=https://expnse.app&summary=${enc}`,
+    };
+    if (urls[platform]) window.open(urls[platform], "_blank");
   };
 
   const handleInstallApp = async () => {
@@ -1078,6 +1234,117 @@ function App() {
             </div>
           </section>
 
+          {/* ── MONEY STORY LANDING SECTION ── */}
+          <section className="money-story-landing" id="moneystory">
+            <div className="msl-bg-glow" />
+            <div className="section-head centered">
+              <p className="eyebrow">✦ New Feature</p>
+              <h2>Money Story</h2>
+              <p className="section-sub muted">Your finances, beautifully summarized. Generate weekly, monthly &amp; yearly stories and share your financial journey.</p>
+            </div>
+
+            <div className="msl-grid">
+              {/* ── Card mockup ── */}
+              <div className="msl-card-wrap">
+                <div className="msl-glow-ring" />
+                <div className="msl-story-card">
+                  <div className="msl-card-header">
+                    <div className="msl-logo-box">
+                      <img src={logo} alt="Expnse" />
+                    </div>
+                    <div>
+                      <p className="msl-brand">Expnse</p>
+                      <p className="msl-period">📊 Monthly Money Story · March 2026</p>
+                    </div>
+                    <div className="msl-badge">LIVE</div>
+                  </div>
+
+                  <div className="msl-metrics">
+                    {[
+                      { icon:"↑", label:"Income",   val:"₹82,000",  cls:"inc" },
+                      { icon:"↓", label:"Spent",    val:"₹23,760",  cls:"exp" },
+                      { icon:"🏦", label:"Saved",   val:"₹58,240",  cls:"sav" },
+                      { icon:"📈", label:"Invested", val:"₹15,000", cls:"inv" },
+                    ].map(m => (
+                      <div className={`msl-metric msl-${m.cls}`} key={m.label}>
+                        <span className="msl-metric-icon">{m.icon}</span>
+                        <p className="msl-metric-label">{m.label}</p>
+                        <strong className="msl-metric-val">{m.val}</strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="msl-savebar-row">
+                    <span className="msl-savebar-label">Savings Rate</span>
+                    <div className="msl-savebar-track">
+                      <div className="msl-savebar-fill" style={{width:"41%"}} />
+                    </div>
+                    <span className="msl-savebar-pct">41%</span>
+                  </div>
+
+                  <div className="msl-chips">
+                    <span className="msl-chip">🏆 Food</span>
+                    <span className="msl-chip">🧬 Smart Saver</span>
+                    <span className="msl-chip">🧾 18 tx</span>
+                    <span className="msl-chip">❤️ 82/100</span>
+                  </div>
+
+                  <div className="msl-msg-box">
+                    <span className="msl-msg-icon">✦</span>
+                    <p className="msl-msg">"Your savings improved this month. Outstanding financial discipline!"</p>
+                  </div>
+
+                  <p className="msl-card-footer">Track your money with clarity · expnse.app</p>
+                </div>
+
+                {/* floating share pills */}
+                <div className="msl-share-float msl-float-1">
+                  <span>𝕏</span> Shared on Twitter
+                </div>
+                <div className="msl-share-float msl-float-2">
+                  <span>💬</span> Sent on WhatsApp
+                </div>
+              </div>
+
+              {/* ── Right: features + CTA ── */}
+              <div className="msl-right">
+                <div className="msl-tag">✦ Zero AI required · 100% your data</div>
+
+                <h3 className="msl-heading">Your financial journey, <em>beautifully told.</em></h3>
+                <p className="msl-subtext muted">Switch between Monthly, Weekly and Yearly views. Every insight computed instantly from your transactions — no AI key needed.</p>
+
+                <div className="msl-features">
+                  {[
+                    { icon:"📊", color:"#34d399", title:"3 story modes",        desc:"Monthly, Weekly, and Yearly summaries with unique insights for each period." },
+                    { icon:"🧬", color:"#a78bfa", title:"Spending Personality",  desc:"Smart Saver, Food Lover, Shopaholic — discover your financial personality." },
+                    { icon:"💰", color:"#fbbf24", title:"Savings Rate + bar",    desc:"Visual progress bar showing exactly how much of your income you're keeping." },
+                    { icon:"🚀", color:"#f87171", title:"One-tap share",         desc:"Share to Twitter, WhatsApp, LinkedIn or download as a PNG image instantly." },
+                  ].map(f => (
+                    <div className="msl-feat" key={f.title}>
+                      <div className="msl-feat-icon" style={{background:`${f.color}18`, border:`1px solid ${f.color}33`, color:f.color}}>{f.icon}</div>
+                      <div>
+                        <strong>{f.title}</strong>
+                        <p className="muted">{f.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="msl-actions">
+                  <button className="primary msl-cta-btn" onClick={() => openAuth("signup")}>
+                    ✦ Generate your Money Story
+                  </button>
+                  <div className="msl-share-row">
+                    <span className="muted" style={{fontSize:"0.76rem"}}>Share on</span>
+                    {["𝕏","💬","in"].map((s,i) => (
+                      <span key={i} className={`msl-share-icon ${["tw","wa","li"][i]}`}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* ── CTA / DOWNLOAD ── */}
           <section id="download" className="cta-section">
             <div className="cta-inner">
@@ -1403,50 +1670,66 @@ function App() {
                     <p className="burn-panel-sub">Daily income vs expense · {monthLabel}</p>
                   </div>
                 </div>
-                <div className="burn-header-right">
-                  <div className="burn-stat-chip income-chip">
-                    <span className="chip-dot" />
-                    <span className="chip-label">Income</span>
-                    <strong className="chip-val">{formatCurrency.format(
-                      dailySeries.income.reduce((a, b) => a + b, 0)
-                    )}</strong>
-                  </div>
-                  <div className="burn-stat-chip expense-chip">
-                    <span className="chip-dot" />
-                    <span className="chip-label">Expense</span>
-                    <strong className="chip-val">{formatCurrency.format(
-                      dailySeries.expense.reduce((a, b) => a + b, 0)
-                    )}</strong>
-                  </div>
-                  <input className="month-picker" type="month" value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)} />
+                <input className="month-picker burn-month-picker" type="month" value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)} />
+              </div>
+
+              {/* summary chips row */}
+              <div className="burn-chips-row">
+                <div className="burn-stat-chip income-chip">
+                  <span className="chip-dot" />
+                  <span className="chip-label">Income</span>
+                  <strong className="chip-val">{formatCurrency.format(
+                    dailySeries.income.reduce((a, b) => a + b, 0)
+                  )}</strong>
                 </div>
+                <div className="burn-stat-chip expense-chip">
+                  <span className="chip-dot" />
+                  <span className="chip-label">Expense</span>
+                  <strong className="chip-val">{formatCurrency.format(
+                    dailySeries.expense.reduce((a, b) => a + b, 0)
+                  )}</strong>
+                </div>
+                {(() => {
+                  const net = dailySeries.income.reduce((a,b)=>a+b,0) - dailySeries.expense.reduce((a,b)=>a+b,0);
+                  return (
+                    <div className={`burn-stat-chip net-chip ${net >= 0 ? "net-pos" : "net-neg"}`}>
+                      <span className="chip-dot" />
+                      <span className="chip-label">Net</span>
+                      <strong className="chip-val">{net >= 0 ? "+" : ""}{formatCurrency.format(net)}</strong>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* chart body */}
               {dailySeries.daysInMonth === 0 ? (
-                <p className="empty-state">Pick a month to see trends.</p>
+                <div className="burn-empty"><span>📅</span><p>Pick a month to see trends.</p></div>
               ) : maxDailyMagnitude === 0 ? (
-                <p className="empty-state">No income/expense activity for this month.</p>
+                <div className="burn-empty"><span>📊</span><p>No activity for this month yet.</p></div>
               ) : (
                 (() => {
                   const days = dailySeries.daysInMonth;
-                  const BAR_MAX_H = 108;
+                  const BAR_MAX_H = 100;
+                  const totalInc = dailySeries.income.reduce((a,b)=>a+b,0);
+                  const totalExp = dailySeries.expense.reduce((a,b)=>a+b,0);
+                  const savingsRate = totalInc > 0 ? Math.round(((totalInc - totalExp) / totalInc) * 100) : 0;
                   return (
                     <div className="burnv2-wrap">
                       {/* y-axis */}
                       <div className="burnv2-yaxis">
                         <span className="burnv2-ylab green">{formatCurrency.format(maxDailyMagnitude)}</span>
-                        <span className="burnv2-ylab mid">0</span>
+                        <span className="burnv2-ylab mid">— 0 —</span>
                         <span className="burnv2-ylab red">{formatCurrency.format(maxDailyMagnitude)}</span>
                       </div>
 
                       {/* scrollable bars */}
                       <div className="burnv2-scroll">
-                        {/* grid lines */}
                         <div className="burnv2-grid">
                           <div className="burnv2-gridline top" />
+                          <div className="burnv2-gridline upper-mid" />
                           <div className="burnv2-gridline mid" />
+                          <div className="burnv2-gridline lower-mid" />
                           <div className="burnv2-gridline bot" />
                           <div className="burnv2-baseline" />
                         </div>
@@ -1455,28 +1738,30 @@ function App() {
                           {Array.from({ length: days }, (_, i) => {
                             const inc = dailySeries.income[i] || 0;
                             const exp = dailySeries.expense[i] || 0;
-                            const incH = maxDailyMagnitude ? Math.round((inc / maxDailyMagnitude) * BAR_MAX_H) : 0;
-                            const expH = maxDailyMagnitude ? Math.round((exp / maxDailyMagnitude) * BAR_MAX_H) : 0;
+                            const incH = maxDailyMagnitude ? Math.max(2, Math.round((inc / maxDailyMagnitude) * BAR_MAX_H)) : 0;
+                            const expH = maxDailyMagnitude ? Math.max(2, Math.round((exp / maxDailyMagnitude) * BAR_MAX_H)) : 0;
                             const hasActivity = inc > 0 || exp > 0;
+                            const isToday = new Date().getDate() === i + 1 &&
+                              new Date().toISOString().slice(0,7) === selectedMonth;
                             return (
-                              <div className={`burnv2-col${hasActivity ? " active" : ""}`} key={i}>
-                                {/* tooltip */}
+                              <div className={`burnv2-col${hasActivity ? " active" : ""}${isToday ? " today" : ""}`} key={i}>
                                 <div className="burnv2-tooltip">
                                   <span className="tt-day">Day {i + 1}</span>
-                                  <span className="tt-row inc">▲ {formatCurrency.format(inc)}</span>
-                                  <span className="tt-row exp">▼ {formatCurrency.format(exp)}</span>
+                                  {inc > 0 && <span className="tt-row inc">▲ {formatCurrency.format(inc)}</span>}
+                                  {exp > 0 && <span className="tt-row exp">▼ {formatCurrency.format(exp)}</span>}
+                                  {inc === 0 && exp === 0 && <span className="tt-row" style={{color:"rgba(255,255,255,0.3)"}}>No activity</span>}
                                 </div>
-                                {/* income bar UP */}
                                 <div className="burnv2-half up">
-                                  {incH > 0 && (
-                                    <div className="burnv2-bar inc" style={{ height: incH }} />
-                                  )}
+                                  {inc > 0
+                                    ? <div className="burnv2-bar inc" style={{ height: incH }} />
+                                    : <div className="burnv2-bar-empty" />
+                                  }
                                 </div>
-                                {/* expense bar DOWN */}
                                 <div className="burnv2-half dn">
-                                  {expH > 0 && (
-                                    <div className="burnv2-bar exp" style={{ height: expH }} />
-                                  )}
+                                  {exp > 0
+                                    ? <div className="burnv2-bar exp" style={{ height: expH }} />
+                                    : <div className="burnv2-bar-empty" />
+                                  }
                                 </div>
                                 <span className="burnv2-day">{i + 1}</span>
                               </div>
@@ -1744,6 +2029,285 @@ function App() {
                   </div>
                 ))
               )}
+            </article>
+          </section>
+          {/* ══════════════════════════════════════════
+              MONEY STORY SECTION
+          ══════════════════════════════════════════ */}
+          <section className="content-grid">
+            <article className="panel money-story-panel wide">
+
+              {/* ── Header ── */}
+              <div className="ms-header">
+                <div className="ai-panel-title-group">
+                  <div className="ai-panel-icon story-icon"><span>✦</span></div>
+                  <div>
+                    <h3 className="ai-panel-title">Money Story</h3>
+                    <p className="ai-panel-sub">Your financial journey · beautifully summarized</p>
+                  </div>
+                </div>
+                <div className="story-period-tabs">
+                  {[["monthly","📊 Monthly"],["weekly","⚡ Weekly"],["yearly","🎉 Yearly"]].map(([p,label]) => (
+                    <button key={p} className={`story-period-tab ${storyPeriod===p?"active":""}`}
+                      onClick={() => setStoryPeriod(p)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Two-column layout: stats left, card right ── */}
+              <div className="ms-body">
+
+                {/* LEFT: rich stats panel */}
+                <div className="ms-stats">
+                  {!storyData || storyData.income === 0 ? (
+                    <div className="ms-empty">
+                      <span>📊</span><p>Add transactions to generate your Money Story</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* ── Core metrics ── */}
+                      <div className="ms-metrics-grid">
+                        <div className="ms-metric ms-income">
+                          <p className="ms-mlabel">↑ Income</p>
+                          <strong className="ms-mval">{formatCurrency.format(storyData.income)}</strong>
+                        </div>
+                        <div className="ms-metric ms-spent">
+                          <p className="ms-mlabel">↓ Spent</p>
+                          <strong className="ms-mval">{formatCurrency.format(storyData.spend)}</strong>
+                        </div>
+                        <div className="ms-metric ms-saved">
+                          <p className="ms-mlabel">🏦 Saved</p>
+                          <strong className="ms-mval">{formatCurrency.format(storyData.saved)}</strong>
+                        </div>
+                        {storyData.invested > 0 && (
+                          <div className="ms-metric ms-invest">
+                            <p className="ms-mlabel">📈 Invested</p>
+                            <strong className="ms-mval">{formatCurrency.format(storyData.invested)}</strong>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ── Savings Rate ── */}
+                      <div className="ms-section">
+                        <div className="ms-section-header">
+                          <span className="ms-section-icon">💰</span>
+                          <strong>Savings Rate</strong>
+                          <span className={`ms-rate-val ${storyData.savRate>=40?"good":storyData.savRate>=20?"ok":"low"}`}>
+                            {storyData.savRate}%
+                          </span>
+                        </div>
+                        <div className="ms-progress-track">
+                          <div className="ms-progress-fill" style={{
+                            width: `${Math.min(100, storyData.savRate)}%`,
+                            background: storyData.savRate>=40
+                              ? "linear-gradient(90deg,#34d399,#059669)"
+                              : storyData.savRate>=20
+                              ? "linear-gradient(90deg,#fbbf24,#d97706)"
+                              : "linear-gradient(90deg,#f87171,#dc2626)"
+                          }}/>
+                        </div>
+                        <div className="ms-progress-labels">
+                          <span>0%</span><span>50%</span><span>100%</span>
+                        </div>
+                      </div>
+
+                      {/* ── Spending Personality ── */}
+                      {storyData.personality && (
+                        <div className="ms-section ms-personality">
+                          <p className="ms-section-label">🧬 Spending Style</p>
+                          <strong className="ms-personality-label">{storyData.personality.label}</strong>
+                          <p className="ms-personality-desc">{storyData.personality.desc}</p>
+                        </div>
+                      )}
+
+                      {/* ── Category breakdown ── */}
+                      {storyData.cats?.length > 0 && (
+                        <div className="ms-section">
+                          <p className="ms-section-label">📂 Top Categories</p>
+                          <div className="ms-cats">
+                            {storyData.cats.slice(0,5).map(([cat, amt]) => {
+                              const pct = storyData.spend > 0 ? Math.round(amt/storyData.spend*100) : 0;
+                              return (
+                                <div className="ms-cat-row" key={cat}>
+                                  <div className="ms-cat-label-row">
+                                    <span className="ms-cat-name">{cat}</span>
+                                    <span className="ms-cat-amt">{formatCurrency.format(amt)}</span>
+                                  </div>
+                                  <div className="ms-cat-bar-track">
+                                    <div className="ms-cat-bar-fill" style={{
+                                      width:`${pct}%`,
+                                      background: categoryPalette[cat] || categoryPalette.Other,
+                                      boxShadow: `0 0 8px ${categoryPalette[cat] || categoryPalette.Other}66`,
+                                    }}/>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Quick facts grid ── */}
+                      <div className="ms-facts-grid">
+                        {storyData.biggestExpense && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">💥 Biggest Expense</p>
+                            <strong>{storyData.biggestExpense.title}</strong>
+                            <p className="ms-fact-val">{formatCurrency.format(Math.abs(storyData.biggestExpense.amount))}</p>
+                          </div>
+                        )}
+                        {storyData.biggestIncome && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">💰 Biggest Income</p>
+                            <strong>{storyData.biggestIncome.title}</strong>
+                            <p className="ms-fact-val">{formatCurrency.format(storyData.biggestIncome.amount)}</p>
+                          </div>
+                        )}
+                        {storyData.topDay && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">📅 Most Expensive Day</p>
+                            <strong>{storyData.topDay[0]}</strong>
+                            <p className="ms-fact-val">{formatCurrency.format(storyData.topDay[1])}</p>
+                          </div>
+                        )}
+                        {storyData.topDow && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">📆 Most Active Day</p>
+                            <strong>{storyData.topDow[0]}</strong>
+                            <p className="ms-fact-val">{storyData.topDow[1]} transactions</p>
+                          </div>
+                        )}
+                        {storyData.topCatByCount && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">🧾 Most Used Category</p>
+                            <strong>{storyData.topCatByCount[0]}</strong>
+                            <p className="ms-fact-val">{storyData.topCatByCount[1]} transactions</p>
+                          </div>
+                        )}
+                        {storyData.avgTx > 0 && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">📈 Avg per Transaction</p>
+                            <strong>{formatCurrency.format(storyData.avgTx)}</strong>
+                            <p className="ms-fact-val">{storyData.expenseTxCount} expense transactions</p>
+                          </div>
+                        )}
+                        {/* weekly comparison */}
+                        {storyData?.period==="weekly" && storyData.spendDiffPct !== null && (
+                          <div className="ms-fact ms-fact-wide">
+                            <p className="ms-fact-label">⚡ Week Comparison</p>
+                            <strong className={storyData.spendDiff>0?"ms-val-red":"ms-val-green"}>
+                              {storyData.spendDiff>0?"↑":"↓"} {storyData.spendDiffPct}% vs last week
+                            </strong>
+                            <p className="ms-fact-val">Last week: {formatCurrency.format(storyData.lastSpend)}</p>
+                          </div>
+                        )}
+                        {/* yearly special facts */}
+                        {storyData?.period==="yearly" && storyData.mostExpensiveMonth && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">🔥 Biggest Spend Month</p>
+                            <strong>{storyData.mostExpensiveMonth}</strong>
+                          </div>
+                        )}
+                        {storyData?.period==="yearly" && storyData.bestSaveMonth && (
+                          <div className="ms-fact">
+                            <p className="ms-fact-label">⭐ Best Saving Month</p>
+                            <strong>{storyData.bestSaveMonth}</strong>
+                          </div>
+                        )}
+                        <div className="ms-fact">
+                          <p className="ms-fact-label">🔢 Total Transactions</p>
+                          <strong>{storyData.txCount}</strong>
+                          <p className="ms-fact-val">{storyData.expenseTxCount} expenses</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* RIGHT: shareable card */}
+                <div className="ms-card-col">
+                  <div className="story-card" ref={storyCardRef}>
+                    <div className="story-card-bg" />
+                    <div className="story-card-inner">
+                      {/* header */}
+                      <div className="story-card-header">
+                        <div className="story-logo-wrap">
+                          <img src={logo} alt="Expnse" className="story-logo" />
+                        </div>
+                        <div>
+                          <p className="story-brand">Expnse</p>
+                          <p className="story-period-label">
+                            {storyPeriod==="monthly"?"📊":storyPeriod==="weekly"?"⚡":"🎉"}{" "}
+                            {storyData?.label || monthLabel} Money Story
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* core 4 metrics */}
+                      <div className="story-metrics">
+                        <div className="story-metric story-metric-income">
+                          <span className="story-metric-icon">↑</span>
+                          <div><p className="story-metric-label">Income</p><strong className="story-metric-val">{formatCurrency.format(storyData?.income||0)}</strong></div>
+                        </div>
+                        <div className="story-metric story-metric-spent">
+                          <span className="story-metric-icon">↓</span>
+                          <div><p className="story-metric-label">Spent</p><strong className="story-metric-val">{formatCurrency.format(storyData?.spend||0)}</strong></div>
+                        </div>
+                        <div className="story-metric story-metric-saved">
+                          <span className="story-metric-icon">🏦</span>
+                          <div><p className="story-metric-label">Saved</p><strong className="story-metric-val">{formatCurrency.format(storyData?.saved||0)}</strong></div>
+                        </div>
+                        <div className="story-metric story-metric-invest">
+                          <span className="story-metric-icon">📈</span>
+                          <div><p className="story-metric-label">Savings Rate</p><strong className="story-metric-val">{storyData?.savRate||0}%</strong></div>
+                        </div>
+                      </div>
+
+                      {/* chip row */}
+                      <div className="story-stats-row">
+                        {storyData?.topCat && (
+                          <div className="story-stat-chip"><span>🏆</span><strong>{storyData.topCat[0]}</strong></div>
+                        )}
+                        {storyData?.txCount > 0 && (
+                          <div className="story-stat-chip"><span>🧾</span><strong>{storyData.txCount} tx</strong></div>
+                        )}
+                        {storyData?.personality && (
+                          <div className="story-stat-chip"><span>🧬</span><strong>{storyData.personality.label.split(" ")[0]} {storyData.personality.label.split(" ")[1]}</strong></div>
+                        )}
+                        {healthScore !== null && (
+                          <div className="story-stat-chip"><span>❤️</span><strong>{healthScore}/100</strong></div>
+                        )}
+                      </div>
+
+                      {/* savings bar on card */}
+                      {storyData?.savRate > 0 && (
+                        <div className="story-card-savebar">
+                          <div className="story-card-savebar-fill" style={{
+                            width:`${Math.min(100, storyData.savRate)}%`,
+                            background: storyData.savRate>=40?"linear-gradient(90deg,#34d399,#059669)":storyData.savRate>=20?"linear-gradient(90deg,#fbbf24,#d97706)":"linear-gradient(90deg,#f87171,#dc2626)"
+                          }}/>
+                        </div>
+                      )}
+
+                      <p className="story-footer">Track your money with clarity · expnse.app</p>
+                    </div>
+                  </div>
+
+                  {/* share + download actions */}
+                  <div className="ms-actions">
+                    <button className="primary ms-download-btn" onClick={downloadStoryCard} disabled={storyDownloading}>
+                      {storyDownloading ? "Generating…" : "⬇ Download Image"}
+                    </button>
+                    <div className="story-share-row">
+                      <span className="story-share-label">Share</span>
+                      <button className="story-share-btn twitter"  onClick={() => shareStory("twitter")}>𝕏</button>
+                      <button className="story-share-btn whatsapp" onClick={() => shareStory("whatsapp")}>💬</button>
+                      <button className="story-share-btn linkedin" onClick={() => shareStory("linkedin")}>in</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </article>
           </section>
         </>
