@@ -1,0 +1,230 @@
+/* ─────────────────────────────────────────────────────────────
+   mobile-fixes.css
+   Paste at the very bottom of App.css
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Fix: perspective clipping feature cards on mobile ── */
+@media (max-width: 768px) {
+  .feature-grid,
+  .cta-platform-cards,
+  .msl-grid {
+    perspective: none !important;
+  }
+
+  /* ── Feature cards: full width, no clipping ── */
+  .feature-card {
+    width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    border-radius: 16px !important;
+  }
+
+  /* ── Fix icon overflowing card top edge ── */
+  .feature-icon-wrap {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    margin-bottom: 12px !important;
+    display: inline-flex !important;
+  }
+
+  /* ── Feature grid: single column, proper padding ── */
+  .feature-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    padding: 0 16px !important;
+  }
+
+  /* ── Section head: proper padding on mobile ── */
+  .section-head {
+    padding: 0 16px !important;
+  }
+  .section-head h2 {
+    font-size: 1.8rem !important;
+    line-height: 1.2 !important;
+  }
+
+  /* ── Hero section: stack vertically ── */
+  .hero-section {
+    flex-direction: column !important;
+    padding: 80px 16px 40px !important;
+    gap: 40px !important;
+  }
+  .hero-left {
+    width: 100% !important;
+    text-align: center !important;
+  }
+  .hero-title {
+    font-size: 2.2rem !important;
+    line-height: 1.15 !important;
+  }
+  .hero-actions {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .hero-actions button {
+    width: 100% !important;
+    max-width: 320px !important;
+  }
+  .hero-right {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+  .dashboard-preview {
+    width: 100% !important;
+    max-width: 420px !important;
+    transform: none !important;
+  }
+  .stat-row {
+    justify-content: center !important;
+    gap: 24px !important;
+  }
+  .hero-badge {
+    justify-content: center !important;
+  }
+
+  /* ── Navbar mobile ── */
+  .landing-nav {
+    padding: 12px 16px !important;
+  }
+
+  /* ── Export section: stack ── */
+  .export-section {
+    flex-direction: column !important;
+    padding: 60px 16px !important;
+    gap: 40px !important;
+  }
+  .export-left,
+  .export-right {
+    width: 100% !important;
+  }
+  .pdf-preview {
+    transform: none !important;
+    width: 100% !important;
+  }
+
+  /* ── Insights grid: single column ── */
+  .insights-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    padding: 0 16px !important;
+  }
+  .insight-card {
+    padding: 24px !important;
+  }
+
+  /* ── Money Story section ── */
+  .msl-grid {
+    flex-direction: column !important;
+    gap: 32px !important;
+    padding: 0 16px !important;
+  }
+  .msl-card-wrap,
+  .msl-right {
+    width: 100% !important;
+    transform: none !important;
+  }
+  .msl-story-card {
+    transform: none !important;
+    width: 100% !important;
+  }
+  .msl-share-float {
+    display: none !important; /* hide floating pills on mobile — they overlap */
+  }
+  .msl-metrics {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* ── CTA platform cards: stack ── */
+  .cta-platform-cards {
+    flex-direction: column !important;
+    gap: 16px !important;
+    padding: 0 16px !important;
+  }
+  .platform-card {
+    width: 100% !important;
+    transform: none !important;
+  }
+  .cta-inner {
+    padding: 60px 16px !important;
+    text-align: center !important;
+  }
+  .cta-section h2 {
+    font-size: 1.8rem !important;
+  }
+  .cta-actions {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .cta-actions button {
+    width: 100% !important;
+    max-width: 320px !important;
+  }
+
+  /* ── Footer: stack ── */
+  .footer-top {
+    flex-direction: column !important;
+    gap: 32px !important;
+    padding: 40px 16px !important;
+  }
+  .footer-links-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 24px !important;
+  }
+  .footer-bottom {
+    padding: 16px !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    text-align: center !important;
+  }
+
+  /* ── Money story section head ── */
+  .money-story-landing {
+    padding: 60px 0 !important;
+  }
+  .money-story-landing .section-head {
+    padding: 0 16px !important;
+  }
+
+  /* ── Disable all 3D hover transforms on mobile (touch devices) ── */
+  .dashboard-preview:hover,
+  .pdf-preview:hover,
+  .msl-story-card:hover,
+  .feature-card:hover,
+  .insight-card:hover,
+  .platform-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* ── GSAP: disable rotateY/rotateX on mobile to prevent clipping ── */
+  .feature-card,
+  .platform-card,
+  .insight-card {
+    transform-style: flat !important;
+    backface-visibility: visible !important;
+  }
+}
+
+/* ── Small phones ── */
+@media (max-width: 400px) {
+  .hero-title {
+    font-size: 1.8rem !important;
+  }
+  .feature-card {
+    padding: 20px 16px !important;
+  }
+  .msl-metrics {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .section-head h2 {
+    font-size: 1.5rem !important;
+  }
+}
