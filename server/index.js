@@ -129,13 +129,14 @@ const clearAuthCookie = (res) => {
 };
 
 const getTokenFromRequest = (req) => {
+  // 1. Check Authorization header first (used by mobile/PWA with localStorage)
+  const authHeader = req.header("authorization");
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    return authHeader.slice(7);
+  }
+  // 2. Fall back to httpOnly cookie (used by web browsers)
   if (req.cookies && req.cookies[TOKEN_COOKIE]) {
     return req.cookies[TOKEN_COOKIE];
-  }
-  const authHeader = req.header("authorization");
-  if (!authHeader) return null;
-  if (authHeader.toLowerCase().startsWith("bearer ")) {
-    return authHeader.slice(7);
   }
   return null;
 };
@@ -201,7 +202,10 @@ app.post("/api/auth/register", async (req, res) => {
 
     const token = signToken(user);
     setAuthCookie(res, token);
+
+    // ── Return token in body so mobile clients can store it in localStorage ──
     return res.status(201).json({
+      token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
@@ -227,7 +231,10 @@ app.post("/api/auth/login", async (req, res) => {
     }
     const token = signToken(user);
     setAuthCookie(res, token);
+
+    // ── Return token in body so mobile clients can store it in localStorage ──
     return res.json({
+      token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
@@ -371,7 +378,6 @@ app.delete("/api/goals/:id", requireAuth, async (req, res) => {
   try {
     const deleted = await Goal.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!deleted) return res.status(404).json({ error: "Goal not found" });
-    // Remove all contributions for this goal too
     await GoalContribution.deleteMany({ goal: req.params.id, user: req.user._id });
     res.json({ ok: true });
   } catch (error) {
@@ -397,7 +403,6 @@ app.post("/api/goals/:goalId/contributions", requireAuth, async (req, res) => {
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Amount must be a positive number" });
     }
-    // Verify goal belongs to user
     const goal = await Goal.findOne({ _id: req.params.goalId, user: req.user._id });
     if (!goal) return res.status(404).json({ error: "Goal not found" });
 
