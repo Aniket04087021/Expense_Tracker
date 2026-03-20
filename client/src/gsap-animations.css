@@ -1,0 +1,205 @@
+/* ─────────────────────────────────────────────────────────────
+   gsap-animations.css
+   Paste at the bottom of App.css  (or import in main.jsx)
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Performance: tell browser these will transform ── */
+.landing-nav,
+.hero-badge,
+.hero-title,
+.lead,
+.hero-actions,
+.stat-item,
+.dashboard-preview,
+.dp-stat-card,
+.dp-tx,
+.feature-card,
+.export-left,
+.pdf-preview,
+.pdf-table-row,
+.pdf-stat-card,
+.insight-card,
+.msl-story-card,
+.msl-metric,
+.msl-share-float,
+.msl-right,
+.msl-feat,
+.platform-card,
+.footer-brand,
+.footer-col {
+  will-change: transform, opacity;
+}
+
+/* ── Perspective wrapper for 3D card flips ── */
+.feature-grid,
+.cta-platform-cards,
+.msl-grid {
+  perspective: 1200px;
+}
+
+/* ── Feature card hover — lift + glow ── */
+.feature-card {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.35s ease,
+              border-color 0.3s ease;
+}
+.feature-card:hover {
+  transform: translateY(-10px) scale(1.03) !important;
+  box-shadow: 0 24px 60px rgba(249, 115, 22, 0.18),
+              0 0 0 1px rgba(249, 115, 22, 0.25);
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+.feature-card:hover .feature-icon-wrap {
+  transform: scale(1.2) rotate(-6deg);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Insight card hover ── */
+.insight-card {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease;
+}
+.insight-card:hover {
+  transform: translateY(-8px) scale(1.04) !important;
+  box-shadow: 0 20px 50px rgba(56, 189, 248, 0.15);
+}
+
+/* ── Platform card hover ── */
+.platform-card {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.35s ease;
+}
+.platform-card:not(.dim):hover {
+  transform: translateY(-12px) !important;
+  box-shadow: 0 28px 64px rgba(249, 115, 22, 0.2);
+}
+
+/* ── PDF preview hover tilt ── */
+.pdf-preview {
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 0.4s ease;
+}
+.pdf-preview:hover {
+  transform: perspective(800px) rotateY(-4deg) rotateX(2deg) translateY(-6px) !important;
+  box-shadow: 20px 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+/* ── MSL story card hover ── */
+.msl-story-card {
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 0.4s ease;
+}
+.msl-story-card:hover {
+  transform: perspective(800px) rotateY(4deg) rotateX(-2deg) translateY(-8px) scale(1.02) !important;
+  box-shadow: 0 32px 80px rgba(167, 139, 250, 0.25);
+}
+
+/* ── Dashboard preview hover ── */
+.dashboard-preview {
+  transition: transform 0.45s cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 0.45s ease;
+}
+.dashboard-preview:hover {
+  transform: perspective(900px) rotateY(-6deg) rotateX(3deg) translateY(-6px) !important;
+  box-shadow: 24px 32px 90px rgba(0, 0, 0, 0.4),
+              0 0 60px rgba(249, 115, 22, 0.1);
+}
+
+/* ── Stat items hover ── */
+.stat-item {
+  transition: transform 0.25s ease, color 0.25s ease;
+  cursor: default;
+}
+.stat-item:hover {
+  transform: translateY(-4px) !important;
+}
+.stat-item:hover strong {
+  color: #f97316;
+}
+
+/* ── Nav links — underline slide ── */
+.nav-links a {
+  position: relative;
+  transition: color 0.25s ease;
+}
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 0;
+  height: 2px;
+  background: #f97316;
+  transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.nav-links a:hover::after { width: 100%; }
+
+/* ── Export check items hover ── */
+.export-features-list li {
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+.export-features-list li:hover {
+  transform: translateX(6px) !important;
+  color: #f97316;
+}
+
+/* ── MSL feat hover ── */
+.msl-feat {
+  transition: transform 0.3s ease, background 0.3s ease;
+  border-radius: 10px;
+  padding: 8px;
+  margin: -8px;
+}
+.msl-feat:hover {
+  transform: translateX(8px) !important;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Smooth section entry: prevent FOUC before GSAP fires ── */
+.feature-card,
+.insight-card,
+.msl-story-card,
+.msl-feat,
+.msl-share-float,
+.platform-card,
+.pdf-table-row,
+.export-left,
+.msl-right {
+  opacity: 0;
+}
+
+/* ── Only apply initial opacity:0 on non-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .feature-card,
+  .insight-card,
+  .msl-story-card,
+  .msl-feat,
+  .msl-share-float,
+  .platform-card,
+  .pdf-table-row,
+  .export-left,
+  .msl-right {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .feature-card:hover,
+  .insight-card:hover,
+  .platform-card:hover,
+  .dashboard-preview:hover,
+  .pdf-preview:hover {
+    transform: none !important;
+  }
+}
+
+/* ── Scroll progress indicator (optional thin bar at top) ── */
+.scroll-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f97316, #fb923c, #fbbf24);
+  transform-origin: left;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.6);
+}
