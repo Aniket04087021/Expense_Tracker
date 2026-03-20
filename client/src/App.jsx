@@ -3,6 +3,7 @@ import { useLandingAnimations } from "./useLandingAnimations";
 import "./gsap-animations.css";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import "./mobile-fixes.css";
 import "./App.css";
 const logo = "/logo expense.png";
 
