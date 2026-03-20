@@ -41,7 +41,6 @@ const formatDate = (value) => {
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? "/api" : "https://expense-tracker-1-vb9x.onrender.com/api");
-const TRANSACTIONS_URL = `${API_BASE}/transactions`;
 const GOALS_URL = `${API_BASE}/goals`;
 
 const landingFeatures = [
@@ -117,12 +116,15 @@ const goalCategoryOptions = [
   "Other",
 ];
 
+// ── Core API helper — always sends token via Authorization header if available ──
 const apiRequest = async (path, options = {}) => {
+  const token = localStorage.getItem("token");
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -165,6 +167,10 @@ function AuthModal({ mode, onClose, onSuccess }) {
       if (!response.ok) {
         setAuthError(data.error || "Authentication failed.");
         return;
+      }
+      // ── Save token to localStorage so mobile stays logged in ──
+      if (data.token) {
+        localStorage.setItem("token", data.token);
       }
       onSuccess(data.user || null);
     } catch {
@@ -257,7 +263,7 @@ function App() {
   const [installingPwa, setInstallingPwa] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [goals, setGoals] = useState([]);
-  const [goalContributions, setGoalContributions] = useState({}); // { goalId: totalContributed }
+  const [goalContributions, setGoalContributions] = useState({});
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [goalForm, setGoalForm] = useState({
@@ -280,12 +286,10 @@ function App() {
     type: "expense",
     date: defaultDate,
   });
-  // Goal contribution via expense form
   const [goalContribMode, setGoalContribMode] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [goalContribAmount, setGoalContribAmount] = useState("");
 
-  // ── Money Story state ──
   const [storyPeriod, setStoryPeriod] = useState("monthly");
   const storyCardRef = useRef(null);
   const [storyDownloading, setStoryDownloading] = useState(false);
@@ -323,6 +327,7 @@ function App() {
     }
   };
 
+  // ── On mount: verify token with /auth/me ──
   useEffect(() => {
     const initAuth = async () => {
       setAuthLoading(true);
@@ -332,6 +337,8 @@ function App() {
           const data = await response.json();
           setUser(data.user || null);
         } else {
+          // Token is invalid or expired — clear it
+          localStorage.removeItem("token");
           setUser(null);
         }
       } catch {
@@ -379,11 +386,12 @@ function App() {
     detectInstalled();
   }, []);
 
+  // ── Load transactions — uses apiRequest so token is sent via header ──
   useEffect(() => {
     const loadTransactions = async () => {
       if (!user) { setTransactions([]); return; }
       try {
-        const response = await fetch(TRANSACTIONS_URL, { credentials: "include" });
+        const response = await apiRequest("/transactions");
         if (!response.ok) throw new Error("Failed to load transactions");
         const data = await response.json();
         setTransactions(Array.isArray(data) ? data : []);
@@ -437,7 +445,6 @@ function App() {
     [categoryBreakdown]
   );
 
-  // ── Financial Health Score (0-100) ──
   const healthScore = useMemo(() => {
     if (totals.income === 0) return null;
     const savingsRate = Math.max(0, (totals.income - totals.spend) / totals.income);
@@ -555,7 +562,7 @@ function App() {
         }
       }
     } catch {
-      // silently fail — UI stays consistent
+      // silently fail
     }
 
     resetGoalForm();
@@ -587,7 +594,6 @@ function App() {
     return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   }, [selectedMonth]);
 
-  // ── Story computed data (needs monthLabel, normalizedTransactions) ──
   const storyData = useMemo(() => {
     const now = new Date();
     const [selYear, selMonth] = selectedMonth.split("-").map(Number);
@@ -724,15 +730,16 @@ function App() {
     setCurrentPage(1);
   };
 
+  // ── Logout: clear localStorage token ──
   const handleLogout = async () => {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } finally {
+      localStorage.removeItem("token");
       setUser(null);
     }
   };
 
-  // ── Download story card as PNG ──
   const downloadStoryCard = async () => {
     const el = storyCardRef.current;
     if (!el) return;
@@ -751,7 +758,6 @@ function App() {
     }
   };
 
-  // ── Share story as formatted text ──
   const shareStory = (platform) => {
     if (!storyData) return;
     const { income, spend, saved, savRate, txCount, topCat, label } = storyData;
@@ -882,6 +888,7 @@ function App() {
     doc.save("expnse-report.pdf");
   };
 
+  // ── Submit transaction — uses apiRequest so token is sent via header ──
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!formState.title.trim() || !formState.amount) return;
@@ -895,10 +902,8 @@ function App() {
       date: formState.date,
     };
     try {
-      const response = await fetch(TRANSACTIONS_URL, {
+      const response = await apiRequest("/transactions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error("Failed");
@@ -922,7 +927,6 @@ function App() {
     event.preventDefault();
     const amount = Number(goalContribAmount);
     if (!selectedGoalId || !amount || amount <= 0) return;
-    // Optimistic update
     setGoalContributions((prev) => ({
       ...prev,
       [selectedGoalId]: (prev[selectedGoalId] || 0) + amount,
@@ -937,7 +941,6 @@ function App() {
         body: JSON.stringify({ amount }),
       });
     } catch {
-      // Refresh from server to stay consistent
       loadGoals();
     }
   };
@@ -986,7 +989,7 @@ function App() {
                       e.preventDefault();
                       const el = document.getElementById(id);
                       if (!el) return;
-                      const navH = 60 + 12 + 20; // navbar height + top offset + extra gap
+                      const navH = 60 + 12 + 20;
                       const top = el.getBoundingClientRect().top + window.scrollY - navH;
                       window.scrollTo({ top, behavior: "smooth" });
                       setShowNavMenu(false);
@@ -1244,7 +1247,6 @@ function App() {
             </div>
 
             <div className="msl-grid">
-              {/* ── Card mockup ── */}
               <div className="msl-card-wrap">
                 <div className="msl-glow-ring" />
                 <div className="msl-story-card">
@@ -1297,7 +1299,6 @@ function App() {
                   <p className="msl-card-footer">Track your money with clarity · expnse.app</p>
                 </div>
 
-                {/* floating share pills */}
                 <div className="msl-share-float msl-float-1">
                   <span>𝕏</span> Shared on Twitter
                 </div>
@@ -1306,7 +1307,6 @@ function App() {
                 </div>
               </div>
 
-              {/* ── Right: features + CTA ── */}
               <div className="msl-right">
                 <div className="msl-tag">✦ Zero AI required · 100% your data</div>
 
@@ -1360,7 +1360,6 @@ function App() {
                 </button>
               </div>
               <div className="cta-platform-cards">
-                {/* Web app */}
                 <div className="platform-card platform-card--web">
                   <div className="platform-card-top">
                     <div className="platform-icon-wrap platform-icon-wrap--web">🌐</div>
@@ -1373,7 +1372,6 @@ function App() {
                   </button>
                 </div>
 
-                {/* Mobile PWA */}
                 <div className="platform-card platform-card--mobile">
                   <div className="platform-card-top">
                     <div className="platform-icon-wrap platform-icon-wrap--mobile">📱</div>
@@ -1390,7 +1388,6 @@ function App() {
                   </button>
                 </div>
 
-                {/* Desktop app */}
                 <div className="platform-card platform-card--desktop dim">
                   <div className="platform-card-top">
                     <div className="platform-icon-wrap platform-icon-wrap--desktop">💻</div>
@@ -1483,7 +1480,6 @@ function App() {
                   <button className="ghost small" onClick={() => { setShowForm(false); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
                 </div>
 
-                {/* Mode toggle: regular or goal */}
                 <div className="pill-group" style={{ marginBottom: 16 }}>
                   <button type="button"
                     className={!goalContribMode ? "pill active" : "pill"}
@@ -1661,7 +1657,6 @@ function App() {
 
           <section className="content-grid">
             <article className="panel panel-chart burn-panel">
-              {/* header */}
               <div className="burn-panel-header">
                 <div className="burn-panel-title-group">
                   <div className="burn-panel-icon">🔥</div>
@@ -1674,7 +1669,6 @@ function App() {
                   onChange={(e) => setSelectedMonth(e.target.value)} />
               </div>
 
-              {/* summary chips row */}
               <div className="burn-chips-row">
                 <div className="burn-stat-chip income-chip">
                   <span className="chip-dot" />
@@ -1702,7 +1696,6 @@ function App() {
                 })()}
               </div>
 
-              {/* chart body */}
               {dailySeries.daysInMonth === 0 ? (
                 <div className="burn-empty"><span>📅</span><p>Pick a month to see trends.</p></div>
               ) : maxDailyMagnitude === 0 ? (
@@ -1711,19 +1704,14 @@ function App() {
                 (() => {
                   const days = dailySeries.daysInMonth;
                   const BAR_MAX_H = 100;
-                  const totalInc = dailySeries.income.reduce((a,b)=>a+b,0);
-                  const totalExp = dailySeries.expense.reduce((a,b)=>a+b,0);
-                  const savingsRate = totalInc > 0 ? Math.round(((totalInc - totalExp) / totalInc) * 100) : 0;
                   return (
                     <div className="burnv2-wrap">
-                      {/* y-axis */}
                       <div className="burnv2-yaxis">
                         <span className="burnv2-ylab green">{formatCurrency.format(maxDailyMagnitude)}</span>
                         <span className="burnv2-ylab mid">— 0 —</span>
                         <span className="burnv2-ylab red">{formatCurrency.format(maxDailyMagnitude)}</span>
                       </div>
 
-                      {/* scrollable bars */}
                       <div className="burnv2-scroll">
                         <div className="burnv2-grid">
                           <div className="burnv2-gridline top" />
@@ -1796,7 +1784,6 @@ function App() {
                 <p className="empty-state">No expense categories yet.</p>
               ) : (
                 <div className="catpanel-body">
-                  {/* Enhanced donut */}
                   <div className="catdonut-wrap">
                     <div className="catdonut" style={{
                       background: `conic-gradient(${categoryBreakdown.map((item, index) => {
@@ -1811,11 +1798,9 @@ function App() {
                         <span className="catdonut-count">{categoryBreakdown.length} categories</span>
                       </div>
                     </div>
-                    {/* glow ring */}
                     <div className="catdonut-glow" />
                   </div>
 
-                  {/* legend with horizontal bars */}
                   <div className="catlegend">
                     {categoryBreakdown.map((item) => {
                       const pct = totalSpend ? Math.round((item.value / totalSpend) * 100) : 0;
@@ -1941,9 +1926,7 @@ function App() {
                     Category
                     <select name="category" value={goalForm.category} onChange={handleGoalFormChange}>
                       {goalCategoryOptions.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
+                        <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
                   </label>
@@ -1951,9 +1934,7 @@ function App() {
                     Period
                     <select name="period" value={goalForm.period} onChange={handleGoalFormChange}>
                       {goalPeriods.map((p) => (
-                        <option key={p.value} value={p.value}>
-                          {p.label}
-                        </option>
+                        <option key={p.value} value={p.value}>{p.label}</option>
                       ))}
                     </select>
                   </label>
@@ -2031,13 +2012,10 @@ function App() {
               )}
             </article>
           </section>
-          {/* ══════════════════════════════════════════
-              MONEY STORY SECTION
-          ══════════════════════════════════════════ */}
+
+          {/* ══ MONEY STORY SECTION ══ */}
           <section className="content-grid">
             <article className="panel money-story-panel wide">
-
-              {/* ── Header ── */}
               <div className="ms-header">
                 <div className="ai-panel-title-group">
                   <div className="ai-panel-icon story-icon"><span>✦</span></div>
@@ -2054,10 +2032,7 @@ function App() {
                 </div>
               </div>
 
-              {/* ── Two-column layout: stats left, card right ── */}
               <div className="ms-body">
-
-                {/* LEFT: rich stats panel */}
                 <div className="ms-stats">
                   {!storyData || storyData.income === 0 ? (
                     <div className="ms-empty">
@@ -2065,7 +2040,6 @@ function App() {
                     </div>
                   ) : (
                     <>
-                      {/* ── Core metrics ── */}
                       <div className="ms-metrics-grid">
                         <div className="ms-metric ms-income">
                           <p className="ms-mlabel">↑ Income</p>
@@ -2087,7 +2061,6 @@ function App() {
                         )}
                       </div>
 
-                      {/* ── Savings Rate ── */}
                       <div className="ms-section">
                         <div className="ms-section-header">
                           <span className="ms-section-icon">💰</span>
@@ -2111,7 +2084,6 @@ function App() {
                         </div>
                       </div>
 
-                      {/* ── Spending Personality ── */}
                       {storyData.personality && (
                         <div className="ms-section ms-personality">
                           <p className="ms-section-label">🧬 Spending Style</p>
@@ -2120,7 +2092,6 @@ function App() {
                         </div>
                       )}
 
-                      {/* ── Category breakdown ── */}
                       {storyData.cats?.length > 0 && (
                         <div className="ms-section">
                           <p className="ms-section-label">📂 Top Categories</p>
@@ -2147,7 +2118,6 @@ function App() {
                         </div>
                       )}
 
-                      {/* ── Quick facts grid ── */}
                       <div className="ms-facts-grid">
                         {storyData.biggestExpense && (
                           <div className="ms-fact">
@@ -2191,7 +2161,6 @@ function App() {
                             <p className="ms-fact-val">{storyData.expenseTxCount} expense transactions</p>
                           </div>
                         )}
-                        {/* weekly comparison */}
                         {storyData?.period==="weekly" && storyData.spendDiffPct !== null && (
                           <div className="ms-fact ms-fact-wide">
                             <p className="ms-fact-label">⚡ Week Comparison</p>
@@ -2201,7 +2170,6 @@ function App() {
                             <p className="ms-fact-val">Last week: {formatCurrency.format(storyData.lastSpend)}</p>
                           </div>
                         )}
-                        {/* yearly special facts */}
                         {storyData?.period==="yearly" && storyData.mostExpensiveMonth && (
                           <div className="ms-fact">
                             <p className="ms-fact-label">🔥 Biggest Spend Month</p>
@@ -2224,12 +2192,10 @@ function App() {
                   )}
                 </div>
 
-                {/* RIGHT: shareable card */}
                 <div className="ms-card-col">
                   <div className="story-card" ref={storyCardRef}>
                     <div className="story-card-bg" />
                     <div className="story-card-inner">
-                      {/* header */}
                       <div className="story-card-header">
                         <div className="story-logo-wrap">
                           <img src={logo} alt="Expnse" className="story-logo" />
@@ -2243,7 +2209,6 @@ function App() {
                         </div>
                       </div>
 
-                      {/* core 4 metrics */}
                       <div className="story-metrics">
                         <div className="story-metric story-metric-income">
                           <span className="story-metric-icon">↑</span>
@@ -2263,7 +2228,6 @@ function App() {
                         </div>
                       </div>
 
-                      {/* chip row */}
                       <div className="story-stats-row">
                         {storyData?.topCat && (
                           <div className="story-stat-chip"><span>🏆</span><strong>{storyData.topCat[0]}</strong></div>
@@ -2279,7 +2243,6 @@ function App() {
                         )}
                       </div>
 
-                      {/* savings bar on card */}
                       {storyData?.savRate > 0 && (
                         <div className="story-card-savebar">
                           <div className="story-card-savebar-fill" style={{
@@ -2293,7 +2256,6 @@ function App() {
                     </div>
                   </div>
 
-                  {/* share + download actions */}
                   <div className="ms-actions">
                     <button className="primary ms-download-btn" onClick={downloadStoryCard} disabled={storyDownloading}>
                       {storyDownloading ? "Generating…" : "⬇ Download Image"}
