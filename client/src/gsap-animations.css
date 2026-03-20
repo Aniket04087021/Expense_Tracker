@@ -1,6 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   gsap-animations.css
-   Paste at the bottom of App.css  (or import in main.jsx)
+   gsap-animations.css  (FIXED — no pre-hiding opacity:0)
    ───────────────────────────────────────────────────────────── */
 
 /* ── Performance: tell browser these will transform ── */
@@ -155,20 +154,22 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-/* ── Smooth section entry: prevent FOUC before GSAP fires ── */
-.feature-card,
-.insight-card,
-.msl-story-card,
-.msl-feat,
-.msl-share-float,
-.platform-card,
-.pdf-table-row,
-.export-left,
-.msl-right {
-  opacity: 0;
+/* ── Scroll progress bar ── */
+.scroll-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, #f97316, #fb923c, #fbbf24);
+  transform: scaleX(0);
+  transform-origin: left;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.6);
 }
 
-/* ── Only apply initial opacity:0 on non-reduced-motion ── */
+/* ── Reduced motion: disable all animations ── */
 @media (prefers-reduced-motion: reduce) {
   .feature-card,
   .insight-card,
@@ -181,25 +182,6 @@
   .msl-right {
     opacity: 1 !important;
     transform: none !important;
+    transition: none !important;
   }
-  .feature-card:hover,
-  .insight-card:hover,
-  .platform-card:hover,
-  .dashboard-preview:hover,
-  .pdf-preview:hover {
-    transform: none !important;
-  }
-}
-
-/* ── Scroll progress indicator (optional thin bar at top) ── */
-.scroll-progress-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #f97316, #fb923c, #fbbf24);
-  transform-origin: left;
-  z-index: 9999;
-  pointer-events: none;
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.6);
 }
