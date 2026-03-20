@@ -297,6 +297,7 @@ function App() {
   const [storyDownloading, setStoryDownloading] = useState(false);
 
   const isAuthenticated = Boolean(user);
+  useLandingAnimations(isAuthenticated);
 
   const openAuth = (mode) => {
     setAuthModalMode(mode);
@@ -1024,6 +1025,7 @@ if (authLoading) {
           </nav>
 
           <div className="landing-shell">
+            <div className="scroll-progress-bar" id="gsap-progress" />
 
           {/* ── HERO ── */}
           <header className="hero-section">
