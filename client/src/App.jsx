@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLandingAnimations } from "./useLandingAnimations";
+import "./gsap-animations.css";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./App.css";
