@@ -945,6 +945,21 @@ function App() {
     }
   };
 
+  // ── Splash screen: shown while verifying token so landing never flashes ──
+if (authLoading) {
+  return (
+    <div className="splash-screen">
+      <div className="splash-inner">
+        <img src={logo} alt="Expnse" className="splash-logo" />
+        <div className="splash-dots">
+          <span /><span /><span />
+        </div>
+        <p className="splash-text">Loading your finances…</p>
+      </div>
+    </div>
+  );
+}
+
   return (
     <div className="app">
       {showAuthModal && (
