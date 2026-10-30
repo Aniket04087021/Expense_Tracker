@@ -23,6 +23,57 @@ const categoryPalette = {
   Other: "#94a3b8",
 };
 
+const categoryIconPaths = {
+  food: <><path d="M3 3v7a3 3 0 0 0 6 0V3M6 3v18M18 3v18M15 3v5a3 3 0 0 0 6 0V3"/></>,
+  groceries: <><path d="M5 8h14l-1 13H6L5 8Z"/><path d="M9 8a3 3 0 0 1 6 0M8 12h8"/></>,
+  medicine: <><path d="M10 3h4v6h6v4h-6v8h-4v-8H4V9h6z"/></>,
+  health: <><path d="M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11Z"/><path d="M8 12h8M12 8v8"/></>,
+  transport: <><path d="M5 17h14l-1-8H6l-1 8Z"/><path d="m7 9 1-4h8l1 4M7 17v2m10-2v2M7 13h.01M17 13h.01"/></>,
+  home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></>,
+  rent: <><path d="M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7"/></>,
+  utilities: <><path d="M13 2 4 14h7l-1 8 10-13h-7z"/></>,
+  bills: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
+  salary: <><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></>,
+  income: <><path d="M12 19V5m-6 6 6-6 6 6"/><path d="M4 21h16"/></>,
+  investment: <><path d="m4 17 6-6 4 3 6-8"/><path d="M15 6h5v5"/><path d="M4 21h16"/></>,
+  education: <><path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11v5c3 3 9 3 12 0v-5M22 9v6"/></>,
+  lifestyle: <><path d="M12 3 14.5 9.5 21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></>,
+  travel: <><path d="M3 14 21 3l-7 18-3-7-8 0Z"/><path d="m11 14 4-4"/></>,
+  bike: <><circle cx="6" cy="16" r="3"/><circle cx="18" cy="16" r="3"/><path d="m6 16 4-7 4 7H6m4-7h4m-1-3h3"/></>,
+  car: <><path d="m5 11 2-5h10l2 5 2 2v5H3v-5z"/><path d="M5 11h14M6 16h.01M18 16h.01"/></>,
+  other: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.8c-1.1 1-1.8 1.4-1.8 3.2M12 17.5h.01"/></>,
+};
+const categoryIconTone = {
+  food: "amber", groceries: "lime", medicine: "rose", health: "rose",
+  transport: "blue", home: "indigo", rent: "indigo", utilities: "amber",
+  bills: "violet", salary: "emerald", income: "emerald",
+  investment: "violet", education: "blue", lifestyle: "pink",
+  travel: "cyan", bike: "orange", car: "slate", other: "slate",
+};
+function CategoryIcon({ category, type, className = "" }) {
+  const raw = String(category || "").trim().toLowerCase();
+  const key = raw.includes("grocer") || raw.includes("supermarket") ? "groceries"
+    : raw.includes("medic") || raw.includes("pharma") ? "medicine"
+    : raw.includes("salary") || raw.includes("payroll") ? "salary"
+    : raw.includes("food") || raw.includes("restaurant") || raw.includes("dining") ? "food"
+    : raw.includes("transport") || raw.includes("fuel") || raw.includes("commute") ? "transport"
+    : raw.includes("rent") ? "rent"
+    : raw.includes("home") || raw.includes("house") ? "home"
+    : raw.includes("bill") || raw.includes("recharge") ? "bills"
+    : raw.includes("utilit") || raw.includes("electric") ? "utilities"
+    : raw.includes("health") || raw.includes("doctor") ? "health"
+    : raw.includes("invest") || type === "investment" ? "investment"
+    : raw.includes("educat") || raw.includes("course") ? "education"
+    : raw.includes("travel") || raw.includes("hotel") ? "travel"
+    : raw.includes("bike") || raw.includes("two wheeler") ? "bike"
+    : raw.includes("car") || raw.includes("vehicle") ? "car"
+    : raw.includes("life") || raw.includes("personal") || raw.includes("entertain") ? "lifestyle"
+    : type === "income" ? "income" : "other";
+  return <span className={`category-icon category-icon-${categoryIconTone[key]} ${className}`} aria-hidden="true">
+    <svg viewBox="0 0 24 24">{categoryIconPaths[key]}</svg>
+  </span>;
+}
+
 const defaultDate = new Date().toISOString().slice(0, 10);
 
 const formatCurrency = new Intl.NumberFormat("en-IN", {
@@ -1808,15 +1859,7 @@ if (authLoading) {
                   </div>
                 ) : normalizedTransactions.slice(0, 4).map((item) => (
                   <div className="home-activity-row" key={item._id ?? item.id}>
-                    <span className={`home-activity-icon ${item.type === "income" ? "is-income" : item.type === "investment" ? "is-investment" : "is-expense"}`} aria-hidden="true">
-                      {item.type === "income" ? (
-                        <svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>
-                      ) : item.type === "investment" ? (
-                        <svg viewBox="0 0 24 24"><path d="M4 18 10 12l4 3 6-8"/><path d="M15 7h5v5"/></svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24"><path d="M12 5v14m-6-6 6 6 6-6"/></svg>
-                      )}
-                    </span>
+                    <CategoryIcon category={item.category} type={item.type} className="home-category-icon" />
                     <div className="home-activity-copy">
                       <strong>{item.title}</strong>
                       <span>{item.category} · {formatDate(item.date)}</span>
@@ -2045,8 +2088,9 @@ if (authLoading) {
                   <p className="empty-state">No transactions yet. Add your first expense.</p>
                 ) : (
                   pagedTransactions.map((item) => (
-                    <div className="transaction" key={item._id ?? item.id}>
-                      <div>
+                    <div className="transaction transaction-with-icon" key={item._id ?? item.id}>
+                      <CategoryIcon category={item.category} type={item.type} className="transaction-category-icon" />
+                      <div className="transaction-main">
                         <p className="transaction-title">{item.title}</p>
                         <p className="muted">{item.category} · {formatDate(item.date)}</p>
                       </div>
