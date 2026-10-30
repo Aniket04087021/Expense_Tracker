@@ -248,6 +248,7 @@ app.post("/api/auth/register", authRateLimit, async (req, res) => {
     setAuthCookie(res, token);
 
     return res.status(201).json({
+      token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
@@ -275,6 +276,7 @@ app.post("/api/auth/login", authRateLimit, async (req, res) => {
     setAuthCookie(res, token);
 
     return res.json({
+      token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
