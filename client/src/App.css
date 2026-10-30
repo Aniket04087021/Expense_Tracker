@@ -4263,3 +4263,69 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
   .dashboard-app .dashboard-bottom-nav { width: calc(100% - 20px) !important; }
   .dashboard-app .profile-popover { right: -2px !important; width: min(310px, calc(100vw - 20px)) !important; }
 }
+
+
+/* Final mobile bottom dock: compact, aligned and clear of page content. */
+@media (max-width: 768px) {
+  .dashboard-app {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
+  }
+  .dashboard-app .dashboard-bottom-nav {
+    width: min(440px, calc(100% - 32px)) !important;
+    min-height: 68px;
+    bottom: max(14px, env(safe-area-inset-bottom)) !important;
+    padding: 7px 9px !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 5px;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 19px !important;
+    background: rgba(255,255,255,.98) !important;
+    box-shadow: 0 8px 24px rgba(15,23,42,.13) !important;
+  }
+  .dashboard-app .dashboard-nav-item {
+    min-height: 52px;
+    padding: 5px 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-radius: 13px;
+    color: #64748b;
+    background: transparent;
+    border: 0;
+  }
+  .dashboard-app .dashboard-nav-item svg {
+    display: block;
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex: 0 0 auto;
+  }
+  .dashboard-app .dashboard-nav-item small {
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .dashboard-app .dashboard-nav-item.active {
+    color: #047857;
+    background: #ecfdf5;
+    box-shadow: inset 0 0 0 1px #a7f3d0;
+  }
+}
+@media (max-width: 380px) {
+  .dashboard-app .dashboard-bottom-nav {
+    width: calc(100% - 24px) !important;
+    min-height: 64px;
+    padding: 6px !important;
+    gap: 2px;
+  }
+  .dashboard-app .dashboard-nav-item small { font-size: 9px; }
+  .dashboard-app .dashboard-nav-item svg { width: 18px; height: 18px; }
+}
