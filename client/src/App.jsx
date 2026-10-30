@@ -44,11 +44,6 @@ const formatDate = (value) => {
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? "/api" : "https://expense-tracker-1-vb9x.onrender.com/api");
-<<<<<<< HEAD
-const TRANSACTIONS_URL = `${API_BASE}/transactions`;
-=======
-const GOALS_URL = `${API_BASE}/goals`;
->>>>>>> af9d595007c377a16269e34a2623e4df4a138d96
 
 const landingFeatures = [
   {
@@ -951,12 +946,8 @@ function App() {
       date: formState.date,
     };
     try {
-<<<<<<< HEAD
       setFormSubmitting(true);
-      const response = await fetch(TRANSACTIONS_URL, {
-=======
       const response = await apiRequest("/transactions", {
->>>>>>> af9d595007c377a16269e34a2623e4df4a138d96
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -2128,16 +2119,10 @@ if (authLoading) {
               )}
             </article>
           </section>
-<<<<<<< HEAD
           {/* ══════════════════════════════════════════
               MONEY STORY SECTION
           ══════════════════════════════════════════ */}
           <section className="content-grid dashboard-mobile-section dashboard-mobile-analytics">
-=======
-
-          {/* ══ MONEY STORY SECTION ══ */}
-          <section className="content-grid">
->>>>>>> af9d595007c377a16269e34a2623e4df4a138d96
             <article className="panel money-story-panel wide">
               <div className="ms-header">
                 <div className="ai-panel-title-group">
