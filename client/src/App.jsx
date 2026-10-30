@@ -342,6 +342,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [formState, setFormState] = useState({
     title: "",
     category: "Food",
@@ -1790,32 +1791,47 @@ if (authLoading) {
                         <input type="text" name="title" placeholder="e.g. Groceries, salary, cab ride"
                           value={formState.title} onChange={handleChange} required />
                       </label>
-                      <label className="entry-field">
-                        <span>Category</span>
-                        <div className="category-select-wrap">
-                          <CategoryIcon category={formState.category} type={formState.type} className="category-select-icon" />
-                          <select name="category" value={formState.category} onChange={handleChange}>
-                            <option>Food</option>
-                            <option>Groceries</option>
-                            <option>Medicine</option>
-                            <option>Transport</option>
-                            <option>Home</option>
-                            <option>Rent</option>
-                            <option>Utilities</option>
-                            <option>Bike</option>
-                            <option>Car</option>
-                            <option>Travel</option>
-                            <option>Education</option>
-                            <option>Health</option>
-                            <option>Lifestyle</option>
-                            <option>Bills</option>
-                            <option>Investment</option>
-                            <option>Salary</option>
-                            <option>Income</option>
-                            <option>Other</option>
-                          </select>
+                      <div className="entry-field category-field">
+                        <span id="entry-category-label">Category</span>
+                        <div className="category-picker">
+                          <button
+                            type="button"
+                            className={`category-picker-trigger${categoryMenuOpen ? " open" : ""}`}
+                            aria-haspopup="listbox"
+                            aria-expanded={categoryMenuOpen}
+                            aria-labelledby="entry-category-label"
+                            onClick={() => setCategoryMenuOpen((open) => !open)}
+                          >
+                            <CategoryIcon category={formState.category} type={formState.type} className="category-picker-current-icon" />
+                            <span className="category-picker-current">
+                              <strong>{formState.category}</strong>
+                              <small>Choose a category</small>
+                            </span>
+                            <svg className="category-picker-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                          </button>
+                          {categoryMenuOpen && (
+                            <div className="category-picker-menu" role="listbox" aria-label="Transaction categories">
+                              {["Food", "Groceries", "Medicine", "Transport", "Home", "Rent", "Utilities", "Bike", "Car", "Travel", "Education", "Health", "Lifestyle", "Bills", "Investment", "Salary", "Income", "Other"].map((category) => (
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={formState.category === category}
+                                  className={`category-picker-option${formState.category === category ? " selected" : ""}`}
+                                  key={category}
+                                  onClick={() => {
+                                    setFormState((prev) => ({ ...prev, category }));
+                                    setCategoryMenuOpen(false);
+                                  }}
+                                >
+                                  <CategoryIcon category={category} type={formState.type} className="category-picker-option-icon" />
+                                  <span>{category}</span>
+                                  {formState.category === category && <svg className="category-picker-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </label>
+                      </div>
                       <label className="entry-field">
                         <span>Transaction date</span>
                         <input type="date" name="date" value={formState.date} onChange={handleChange} required />
