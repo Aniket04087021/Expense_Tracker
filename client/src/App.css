@@ -4056,7 +4056,6 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
     width: 100%;
     max-width: 100%;
     padding: 0 14px 18px !important;
-    overflow: clip;
   }
   .dashboard-app .top-bar {
     position: relative;
