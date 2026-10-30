@@ -4994,3 +4994,37 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
     margin: 0 0 14px;
   }
 }
+
+
+.demo-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid #a7f3d0;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: .78rem;
+}
+.demo-mode-banner strong { font-weight: 800; }
+.demo-mode-banner button {
+  flex: 0 0 auto;
+  border: 1px solid #6ee7b7;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #fff;
+  color: #047857;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+@media (max-width: 768px) {
+  .dashboard-app .demo-mode-banner {
+    padding: 10px 11px;
+    font-size: .7rem;
+    border-radius: 12px;
+  }
+  .dashboard-app .demo-mode-banner button { padding: 6px 9px; }
+}
