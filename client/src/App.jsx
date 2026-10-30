@@ -2054,7 +2054,7 @@ if (authLoading) {
                           <div className="burnv2-baseline" />
                         </div>
 
-                        <div className="burnv2-bars">
+                        <div className="burnv2-bars" style={{ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` }}>
                           {Array.from({ length: days }, (_, i) => {
                             const inc = dailySeries.income[i] || 0;
                             const exp = dailySeries.expense[i] || 0;
