@@ -4930,3 +4930,23 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
   .dashboard-app .transaction-category-icon { width: 38px; height: 38px; }
   .dashboard-app .transaction-with-icon { gap: 10px; }
 }
+
+
+/* Keep the dashboard header pinned while the mobile app content scrolls. */
+@media (max-width: 768px) {
+  .dashboard-app .top-bar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1500 !important;
+    width: calc(100% + 32px);
+    margin: 0 -16px 14px;
+    padding-top: max(10px, env(safe-area-inset-top)) !important;
+    border-radius: 0 0 18px 18px !important;
+    background: rgba(255,255,255,.97) !important;
+    box-shadow: 0 6px 18px rgba(15,23,42,.07) !important;
+    isolation: isolate;
+  }
+  .dashboard-app .top-bar-heading { min-height: 58px; }
+  .dashboard-app .profile-menu { z-index: 1501 !important; }
+  .dashboard-app .profile-popover { z-index: 1502 !important; }
+}
