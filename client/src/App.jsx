@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLandingAnimations } from "./useLandingAnimations";
 import "./gsap-animations.css";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -359,7 +358,6 @@ function App() {
   const [storyDownloading, setStoryDownloading] = useState(false);
 
   const isAuthenticated = Boolean(user);
-  useLandingAnimations(isAuthenticated);
 
   const profileMenuRef = useRef(null);
   const profileInitials = (user?.name || user?.email || "U")
@@ -1212,7 +1210,6 @@ if (authLoading) {
           </nav>
 
           <div className="landing-shell">
-            <div className="scroll-progress-bar" id="gsap-progress" />
 
           {/* ── HERO ── */}
           <header className="hero-section">
