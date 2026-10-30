@@ -4431,3 +4431,158 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
   }
   .dashboard-app .money-story-panel .ms-actions { width: 100%; }
 }
+
+
+/* Home dashboard: richer hierarchy without demo or hard-coded financial data. */
+.home-insights {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(240px, .9fr);
+  gap: 16px;
+  margin: 0 0 18px;
+}
+.home-insights .panel { min-width: 0; }
+.text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  padding: 7px 0;
+  background: transparent;
+  color: #047857;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.home-activity-list { display: flex; flex-direction: column; }
+.home-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+.home-activity-row:last-child { border-bottom: 0; }
+.home-activity-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #475569;
+}
+.home-activity-icon svg,
+.home-plan-icon svg,
+.home-empty-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.home-activity-icon.is-income { background: #ecfdf5; color: #059669; }
+.home-activity-icon.is-expense { background: #fff1f2; color: #e11d48; }
+.home-activity-icon.is-investment { background: #f5f3ff; color: #7c3aed; }
+.home-activity-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.home-activity-copy strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: .86rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-activity-copy span { color: #64748b; font-size: .72rem; }
+.home-activity-amount {
+  flex: 0 0 auto;
+  font-size: .82rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.home-activity-amount.positive { color: #15803d; }
+.home-activity-amount.negative { color: #e11d48; }
+.home-activity-amount.investment { color: #7c3aed; }
+.home-empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 12px;
+  text-align: center;
+}
+.home-empty-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #059669;
+}
+.home-empty strong { color: #0f172a; font-size: .9rem; }
+.home-empty p { color: #64748b; font-size: .78rem; margin: 0; }
+.home-empty-action { margin-top: 5px; padding: 9px 14px; }
+.home-plan-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  background: linear-gradient(145deg,#ffffff,#f0fdf7) !important;
+}
+.home-plan-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 13px;
+  background: #dcfce7;
+  color: #047857;
+}
+.home-plan-copy { min-width: 0; }
+.home-plan-copy h3 { margin: 1px 0 5px; color: #0f172a; font-size: .95rem; }
+.home-plan-copy p { margin: 0 0 7px; color: #64748b; font-size: .78rem; line-height: 1.5; }
+
+@media (max-width: 768px) {
+  .dashboard-app .home-insights {
+    grid-template-columns: minmax(0,1fr);
+    gap: 12px;
+    margin: 0 0 16px;
+  }
+  .dashboard-app .home-insights .panel { padding: 16px 14px; border-radius: 18px; }
+  .dashboard-app .home-activity-row { gap: 9px; padding: 11px 0; }
+  .dashboard-app .home-activity-icon { width: 36px; height: 36px; flex-basis: 36px; }
+  .dashboard-app .home-activity-copy strong { font-size: .82rem; }
+  .dashboard-app .home-activity-amount { font-size: .76rem; }
+  .dashboard-app .home-plan-panel { align-items: center; }
+  .dashboard-app .money-story-panel .ms-empty {
+    min-height: 150px;
+    padding: 24px 12px;
+  }
+  .dashboard-app .money-story-panel .ms-metrics-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 9px;
+  }
+  .dashboard-app .money-story-panel .ms-metric { min-width: 0; padding: 11px; }
+  .dashboard-app .money-story-panel .ms-mval { overflow-wrap: anywhere; font-size: .9rem; }
+  .dashboard-app .money-story-panel .ms-section { min-width: 0; }
+  .dashboard-app .money-story-panel .ms-personality { padding: 12px; }
+  .dashboard-app .money-story-panel .ms-cats { gap: 10px; }
+  .dashboard-app .money-story-panel .ms-cat-label-row { gap: 10px; }
+  .dashboard-app .money-story-panel .ms-cat-name,
+  .dashboard-app .money-story-panel .ms-cat-amt { overflow-wrap: anywhere; }
+}
+@media (max-width: 380px) {
+  .dashboard-app .home-activity-row { flex-wrap: wrap; }
+  .dashboard-app .home-activity-amount { margin-left: 45px; }
+}
