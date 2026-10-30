@@ -2036,60 +2036,52 @@ if (authLoading) {
               ) : (
                 (() => {
                   const days = dailySeries.daysInMonth;
-                  const BAR_MAX_H = 100;
+                  const maxIncome = Math.max(...dailySeries.income, 0);
+                  const maxExpense = Math.max(...dailySeries.expense, 0);
+                  const chartMoney = (value) => new Intl.NumberFormat("en-IN", {
+                    style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1
+                  }).format(value);
+                  const [chartYear, chartMonth] = selectedMonth.split("-").map(Number);
+                  const today = new Date();
+                  const isCurrentMonth = today.getFullYear() === chartYear && today.getMonth() + 1 === chartMonth;
                   return (
-                    <div className="burnv2-wrap">
-                      <div className="burnv2-yaxis">
-                        <span className="burnv2-ylab green">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1 }).format(maxDailyMagnitude)}</span>
-                        <span className="burnv2-ylab mid">₹0</span>
-                        <span className="burnv2-ylab red">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1 }).format(maxDailyMagnitude)}</span>
+                    <div className="burnv3">
+                      <div className="burnv3-meta">
+                        <span>Daily activity</span>
+                        <span className="burnv3-scale-note">Each series scaled independently</span>
                       </div>
-
-                      <div className="burnv2-scroll">
-                        <div className="burnv2-grid">
-                          <div className="burnv2-gridline top" />
-                          <div className="burnv2-gridline upper-mid" />
-                          <div className="burnv2-gridline mid" />
-                          <div className="burnv2-gridline lower-mid" />
-                          <div className="burnv2-gridline bot" />
-                          <div className="burnv2-baseline" />
+                      <div className="burnv3-legend">
+                        <span><i className="burnv3-dot income" />Income <b>{chartMoney(maxIncome)} peak</b></span>
+                        <span><i className="burnv3-dot expense" />Expense <b>{chartMoney(maxExpense)} peak</b></span>
+                      </div>
+                      <div className="burnv3-chart" role="img" aria-label={`Daily income and expense for ${monthLabel}`}>
+                        <div className="burnv3-gridlines" aria-hidden="true">
+                          <i /><i /><i /><i />
                         </div>
-
-                        <div className="burnv2-bars" style={{ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` }}>
+                        <div className="burnv3-columns">
                           {Array.from({ length: days }, (_, i) => {
                             const inc = dailySeries.income[i] || 0;
                             const exp = dailySeries.expense[i] || 0;
-                            const incH = maxDailyMagnitude ? Math.max(2, Math.round((inc / maxDailyMagnitude) * BAR_MAX_H)) : 0;
-                            const expH = maxDailyMagnitude ? Math.max(2, Math.round((exp / maxDailyMagnitude) * BAR_MAX_H)) : 0;
-                            const hasActivity = inc > 0 || exp > 0;
-                            const localNow = new Date();
-                            const isToday = localNow.getDate() === i + 1 &&
-                              `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}` === selectedMonth;
+                            const incHeight = maxIncome ? Math.max(inc > 0 ? 5 : 0, (inc / maxIncome) * 100) : 0;
+                            const expHeight = maxExpense ? Math.max(exp > 0 ? 5 : 0, (exp / maxExpense) * 100) : 0;
+                            const isToday = isCurrentMonth && today.getDate() === i + 1;
+                            const showLabel = i === 0 || (i + 1) % 5 === 0 || i === days - 1;
+                            const dateLabel = new Date(chartYear, chartMonth - 1, i + 1).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
                             return (
-                              <div className={`burnv2-col${hasActivity ? " active" : ""}${isToday ? " today" : ""}`} key={i}>
-                                <div className="burnv2-tooltip">
-                                  <span className="tt-day">Day {i + 1}</span>
-                                  {inc > 0 && <span className="tt-row inc">▲ {formatCurrency.format(inc)}</span>}
-                                  {exp > 0 && <span className="tt-row exp">▼ {formatCurrency.format(exp)}</span>}
-                                  {inc === 0 && exp === 0 && <span className="tt-row" style={{color:"rgba(255,255,255,0.3)"}}>No activity</span>}
+                              <div className={`burnv3-day${isToday ? " today" : ""}`} key={i}
+                                title={`${dateLabel} · Income: ${formatCurrency.format(inc)} · Expense: ${formatCurrency.format(exp)}`}>
+                                <div className="burnv3-bars">
+                                  <span className="burnv3-bar income" style={{ height: `${incHeight}%` }} />
+                                  <span className="burnv3-bar expense" style={{ height: `${expHeight}%` }} />
                                 </div>
-                                <div className="burnv2-half up">
-                                  {inc > 0
-                                    ? <div className="burnv2-bar inc" style={{ height: incH }} />
-                                    : <div className="burnv2-bar-empty" />
-                                  }
-                                </div>
-                                <div className="burnv2-half dn">
-                                  {exp > 0
-                                    ? <div className="burnv2-bar exp" style={{ height: expH }} />
-                                    : <div className="burnv2-bar-empty" />
-                                  }
-                                </div>
-                                <span className="burnv2-day">{i + 1}</span>
+                                <span className={`burnv3-day-label${showLabel ? " visible" : ""}`}>{showLabel ? i + 1 : ""}</span>
                               </div>
                             );
                           })}
                         </div>
+                      </div>
+                      <div className="burnv3-foot">
+                        <span>1</span><span>{Math.ceil(days / 2)}</span><span>{days}</span>
                       </div>
                     </div>
                   );
