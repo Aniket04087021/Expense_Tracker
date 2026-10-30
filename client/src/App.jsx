@@ -174,13 +174,11 @@ const goalCategoryOptions = [
 
 // ── Core API helper — always sends token via Authorization header if available ──
 const apiRequest = async (path, options = {}) => {
-  const token = localStorage.getItem("token");
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -223,10 +221,6 @@ function AuthModal({ mode, onClose, onSuccess }) {
       if (!response.ok) {
         setAuthError(data.error || "Authentication failed.");
         return;
-      }
-      // ── Save token to localStorage so mobile stays logged in ──
-      if (data.token) {
-        localStorage.setItem("token", data.token);
       }
       onSuccess(data.user || null);
     } catch {
@@ -428,7 +422,6 @@ function App() {
           setUser(data.user || null);
         } else {
           // Token is invalid or expired — clear it
-          localStorage.removeItem("token");
           setUser(null);
         }
       } catch {
@@ -879,7 +872,6 @@ function App() {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } finally {
-      localStorage.removeItem("token");
       setUser(null);
     }
   };
