@@ -1,21 +1,22 @@
 {
-  "name": "Expnse",
+  "name": "Expnse – Personal Finance",
   "short_name": "Expnse",
-  "description": "Track daily expenses",
+  "description": "A clear, private space to track income, expenses, investments and goals.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "background_color": "#F8FAFC",
+  "theme_color": "#059669",
   "icons": [
     {
-      "src": "/logo expense.png",
+      "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/logo expense.png",
+      "src": "/icon-maskable.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"

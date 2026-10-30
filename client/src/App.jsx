@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLandingAnimations } from "./useLandingAnimations";
-import "./gsap-animations.css";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./mobile-fixes.css";
@@ -8,7 +6,12 @@ import "./App.css";
 const logo = "/logo expense.png";
 
 const categoryPalette = {
-  Food: "#ff8a5b",
+  Food: "#f59e0b",
+  Groceries: "#84cc16",
+  Medicine: "#f43f5e",
+  Salary: "#10b981",
+  Utilities: "#fbbf24",
+  Rent: "#6366f1",
   Transport: "#f5c76b",
   Lifestyle: "#7dd3fc",
   Bills: "#a78bfa",
@@ -22,6 +25,57 @@ const categoryPalette = {
   Health: "#22c55e",
   Other: "#94a3b8",
 };
+
+const categoryIconPaths = {
+  food: <><path d="M3 3v7a3 3 0 0 0 6 0V3M6 3v18M18 3v18M15 3v5a3 3 0 0 0 6 0V3"/></>,
+  groceries: <><path d="M5 8h14l-1 13H6L5 8Z"/><path d="M9 8a3 3 0 0 1 6 0M8 12h8"/></>,
+  medicine: <><path d="M10 3h4v6h6v4h-6v8h-4v-8H4V9h6z"/></>,
+  health: <><path d="M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11Z"/><path d="M8 12h8M12 8v8"/></>,
+  transport: <><path d="M5 17h14l-1-8H6l-1 8Z"/><path d="m7 9 1-4h8l1 4M7 17v2m10-2v2M7 13h.01M17 13h.01"/></>,
+  home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></>,
+  rent: <><path d="M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7"/></>,
+  utilities: <><path d="M13 2 4 14h7l-1 8 10-13h-7z"/></>,
+  bills: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></>,
+  salary: <><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></>,
+  income: <><path d="M12 19V5m-6 6 6-6 6 6"/><path d="M4 21h16"/></>,
+  investment: <><path d="m4 17 6-6 4 3 6-8"/><path d="M15 6h5v5"/><path d="M4 21h16"/></>,
+  education: <><path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11v5c3 3 9 3 12 0v-5M22 9v6"/></>,
+  lifestyle: <><path d="M12 3 14.5 9.5 21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></>,
+  travel: <><path d="M3 14 21 3l-7 18-3-7-8 0Z"/><path d="m11 14 4-4"/></>,
+  bike: <><circle cx="6" cy="16" r="3"/><circle cx="18" cy="16" r="3"/><path d="m6 16 4-7 4 7H6m4-7h4m-1-3h3"/></>,
+  car: <><path d="m5 11 2-5h10l2 5 2 2v5H3v-5z"/><path d="M5 11h14M6 16h.01M18 16h.01"/></>,
+  other: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.8c-1.1 1-1.8 1.4-1.8 3.2M12 17.5h.01"/></>,
+};
+const categoryIconTone = {
+  food: "amber", groceries: "lime", medicine: "rose", health: "rose",
+  transport: "blue", home: "indigo", rent: "indigo", utilities: "amber",
+  bills: "violet", salary: "emerald", income: "emerald",
+  investment: "violet", education: "blue", lifestyle: "pink",
+  travel: "cyan", bike: "orange", car: "slate", other: "slate",
+};
+function CategoryIcon({ category, type, className = "" }) {
+  const raw = String(category || "").trim().toLowerCase();
+  const key = raw.includes("grocer") || raw.includes("supermarket") ? "groceries"
+    : raw.includes("medic") || raw.includes("pharma") ? "medicine"
+    : raw.includes("salary") || raw.includes("payroll") ? "salary"
+    : raw.includes("food") || raw.includes("restaurant") || raw.includes("dining") ? "food"
+    : raw.includes("transport") || raw.includes("fuel") || raw.includes("commute") ? "transport"
+    : raw.includes("rent") ? "rent"
+    : raw.includes("home") || raw.includes("house") ? "home"
+    : raw.includes("bill") || raw.includes("recharge") ? "bills"
+    : raw.includes("utilit") || raw.includes("electric") ? "utilities"
+    : raw.includes("health") || raw.includes("doctor") ? "health"
+    : raw.includes("invest") || type === "investment" ? "investment"
+    : raw.includes("educat") || raw.includes("course") ? "education"
+    : raw.includes("travel") || raw.includes("hotel") ? "travel"
+    : raw.includes("bike") || raw.includes("two wheeler") ? "bike"
+    : raw.includes("car") || raw.includes("vehicle") ? "car"
+    : raw.includes("life") || raw.includes("personal") || raw.includes("entertain") ? "lifestyle"
+    : type === "income" ? "income" : "other";
+  return <span className={`category-icon category-icon-${categoryIconTone[key]} ${className}`} aria-hidden="true">
+    <svg viewBox="0 0 24 24">{categoryIconPaths[key]}</svg>
+  </span>;
+}
 
 const defaultDate = new Date().toISOString().slice(0, 10);
 
@@ -44,11 +98,6 @@ const formatDate = (value) => {
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? "/api" : "https://expense-tracker-1-vb9x.onrender.com/api");
-<<<<<<< HEAD
-const TRANSACTIONS_URL = `${API_BASE}/transactions`;
-=======
-const GOALS_URL = `${API_BASE}/goals`;
->>>>>>> af9d595007c377a16269e34a2623e4df4a138d96
 
 const landingFeatures = [
   {
@@ -138,7 +187,7 @@ const apiRequest = async (path, options = {}) => {
   return response;
 };
 
-function AuthModal({ mode, onClose, onSuccess }) {
+function AuthModal({ mode, onClose, onSuccess, notify }) {
   const [authMode, setAuthMode] = useState(mode || "login");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
@@ -154,10 +203,12 @@ function AuthModal({ mode, onClose, onSuccess }) {
     const trimmedName = authName.trim();
     if (!trimmedEmail || !trimmedPassword) {
       setAuthError("Email and password are required.");
+      notify("Enter your email and password to continue.", "error");
       return;
     }
     if (authMode === "signup" && !trimmedName) {
       setAuthError("Name is required for signup.");
+      notify("Please enter your name to create an account.", "error");
       return;
     }
     const payload =
@@ -172,16 +223,17 @@ function AuthModal({ mode, onClose, onSuccess }) {
       );
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setAuthError(data.error || "Authentication failed.");
+        const message = data.error || (authMode === "login" ? "Incorrect email or password." : "Could not create your account.");
+        setAuthError(message);
+        notify(message, "error");
         return;
       }
-      // ── Save token to localStorage so mobile stays logged in ──
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-      }
+      if (data.token) localStorage.setItem("token", data.token);
+      notify(authMode === "login" ? "Login successful. Welcome back!" : "Account created successfully. Welcome to Expnse!");
       onSuccess(data.user || null);
     } catch {
       setAuthError("Authentication failed.");
+      notify("Unable to connect. Please try again.", "error");
     } finally {
       setAuthLoading(false);
     }
@@ -262,6 +314,9 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState("login");
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -289,6 +344,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [formState, setFormState] = useState({
     title: "",
     category: "Food",
@@ -305,7 +361,16 @@ function App() {
   const [storyDownloading, setStoryDownloading] = useState(false);
 
   const isAuthenticated = Boolean(user);
-  useLandingAnimations(isAuthenticated);
+
+  const notify = (message, type = "success") => {
+    setToast({ message, type, id: Date.now() });
+  };
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const profileMenuRef = useRef(null);
   const profileInitials = (user?.name || user?.email || "U")
@@ -366,20 +431,18 @@ function App() {
           setUser(data.user || null);
         } else {
           // Token is invalid or expired — clear it
-          localStorage.removeItem("token");
           setUser(null);
         }
       } catch {
         setUser(null);
+      } finally {
+        setAuthLoading(false);
       }
     };
     initAuth();
   }, []);
 
-  useEffect(() => {
-    loadGoals();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
@@ -428,20 +491,52 @@ function App() {
     detectInstalled();
   }, []);
 
-  // ── Load transactions — uses apiRequest so token is sent via header ──
+  // Load the dashboard data together so the first screen never shows partial totals.
   useEffect(() => {
-    const loadTransactions = async () => {
-      if (!user) { setTransactions([]); return; }
-      try {
-        const response = await apiRequest("/transactions");
-        if (!response.ok) throw new Error("Failed to load transactions");
-        const data = await response.json();
-        setTransactions(Array.isArray(data) ? data : []);
-      } catch {
+    let active = true;
+    const loadDashboard = async () => {
+      if (!user) {
         setTransactions([]);
+        setGoals([]);
+        setGoalContributions({});
+        setDataLoading(false);
+        return;
+      }
+      setDataLoading(true);
+      try {
+        const [txRes, goalsRes, contribRes] = await Promise.all([
+          apiRequest("/transactions"),
+          apiRequest("/goals"),
+          apiRequest("/goals/contributions"),
+        ]);
+        if (!txRes.ok || !goalsRes.ok || !contribRes.ok) {
+          throw new Error("Unable to load dashboard data");
+        }
+        const [txData, goalsData, contribData] = await Promise.all([
+          txRes.json(), goalsRes.json(), contribRes.json(),
+        ]);
+        if (!active) return;
+        setTransactions(Array.isArray(txData) ? txData : []);
+        setGoals(Array.isArray(goalsData) ? goalsData : []);
+        const contributionMap = {};
+        (Array.isArray(contribData) ? contribData : []).forEach((item) => {
+          const goalId = item.goal?._id || item.goal;
+          contributionMap[goalId] = (contributionMap[goalId] || 0) + Number(item.amount || 0);
+        });
+        setGoalContributions(contributionMap);
+      } catch {
+        if (active) {
+          setTransactions([]);
+          setGoals([]);
+          setGoalContributions({});
+          setToast({ type: "error", message: "Could not load your data. Please refresh or sign in again." });
+        }
+      } finally {
+        if (active) setDataLoading(false);
       }
     };
-    loadTransactions();
+    loadDashboard();
+    return () => { active = false; };
   }, [user]);
 
   const normalizedTransactions = useMemo(
@@ -503,10 +598,11 @@ function App() {
     const income = Array.from({ length: daysInMonth }, () => 0);
     const expense = Array.from({ length: daysInMonth }, () => 0);
     normalizedTransactions.forEach((entry) => {
-      const d = new Date(entry.date);
-      if (Number.isNaN(d.getTime())) return;
-      if (d.getFullYear() === year && d.getMonth() + 1 === month) {
-        const idx = d.getDate() - 1;
+      const dateParts = String(entry.date || "").slice(0, 10).split("-").map(Number);
+      const [entryYear, entryMonth, entryDay] = dateParts;
+      if (!entryYear || !entryMonth || !entryDay) return;
+      if (entryYear === year && entryMonth === month) {
+        const idx = entryDay - 1;
         if (entry.type === "income" && entry.amount > 0) {
           income[idx] += Math.abs(entry.amount);
         } else if (entry.type !== "investment" && entry.amount < 0) {
@@ -589,22 +685,23 @@ function App() {
           method: "PUT",
           body: JSON.stringify(payload),
         });
-        if (res.ok) {
-          const updated = await res.json();
-          setGoals((prev) => prev.map((g) => (g._id === editingGoalId ? updated : g)));
-        }
+        if (!res.ok) throw new Error("Goal update failed");
+        const updated = await res.json();
+        setGoals((prev) => prev.map((g) => (g._id === editingGoalId ? updated : g)));
+        notify("Goal updated.");
       } else {
         const res = await apiRequest("/goals", {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        if (res.ok) {
-          const created = await res.json();
-          setGoals((prev) => [created, ...prev]);
-        }
+        if (!res.ok) throw new Error("Goal creation failed");
+        const created = await res.json();
+        setGoals((prev) => [created, ...prev]);
+        notify("Goal created.");
       }
     } catch {
-      // silently fail
+      notify("Could not save this goal. Please try again.", "error");
+      return;
     }
 
     resetGoalForm();
@@ -614,8 +711,13 @@ function App() {
   const handleRemoveGoal = async (goalId) => {
     setGoals((prev) => prev.filter((g) => g._id !== goalId));
     try {
-      await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
-    } catch { /* ignore */ }
+      const response = await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Delete failed");
+      notify("Goal deleted.");
+    } catch {
+      notify("Could not delete this goal.", "error");
+      loadGoals();
+    }
   };
 
   const handleEditGoal = (goal) => {
@@ -772,7 +874,7 @@ function App() {
     setCurrentPage(1);
   };
 
-  // ── Logout: clear localStorage token ──
+  // ── Logout: invalidate the HttpOnly session cookie ──
   const handleLogout = async () => {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
@@ -825,13 +927,28 @@ function App() {
   };
 
   const handleInstallApp = async () => {
-    if (isAppInstalled || !deferredInstallPrompt) return;
+    if (isAppInstalled || installingPwa) return;
+    if (!deferredInstallPrompt) {
+      notify(
+        /iphone|ipad|ipod/i.test(navigator.userAgent)
+          ? "To install: tap Share in Safari, then choose Add to Home Screen."
+          : "To install: open your browser menu and choose Install app or Add to Home Screen.",
+        "info"
+      );
+      return;
+    }
     setInstallingPwa(true);
-    deferredInstallPrompt.prompt();
-    const { outcome } = await deferredInstallPrompt.userChoice;
-    setDeferredInstallPrompt(null);
-    setInstallingPwa(false);
-    if (outcome === "accepted") setIsAppInstalled(true);
+    try {
+      await deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === "accepted") {
+        setIsAppInstalled(true);
+        notify("Expnse is ready on your device.");
+      }
+    } finally {
+      setDeferredInstallPrompt(null);
+      setInstallingPwa(false);
+    }
   };
 
   const formatPlainAmount = (value) =>
@@ -951,25 +1068,18 @@ function App() {
       date: formState.date,
     };
     try {
-<<<<<<< HEAD
       setFormSubmitting(true);
-      const response = await fetch(TRANSACTIONS_URL, {
-=======
       const response = await apiRequest("/transactions", {
->>>>>>> af9d595007c377a16269e34a2623e4df4a138d96
         method: "POST",
         body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error("Failed");
       const saved = await response.json();
       setTransactions((prev) => [saved, ...prev]);
+      notify("Transaction saved successfully.");
     } catch {
-      const signedAmount = formState.type === "expense" ? -parsedAmount : parsedAmount;
-      setTransactions((prev) => [
-        { id: Date.now(), title: payload.title, category: payload.category, date: payload.date, amount: signedAmount },
-        ...prev,
-      ]);
-      setFormFeedback("Saved locally. We will sync when the connection is available.");
+      notify("Transaction could not be saved. Check your connection and try again.", "error");
+      return;
     } finally {
       setFormSubmitting(false);
     }
@@ -996,11 +1106,14 @@ function App() {
     setMobileView("home");
     setShowForm(false);
     try {
-      await apiRequest(`/goals/${selectedGoalId}/contributions`, {
+      const response = await apiRequest(`/goals/${selectedGoalId}/contributions`, {
         method: "POST",
         body: JSON.stringify({ amount }),
       });
+      if (!response.ok) throw new Error("Contribution failed");
+      notify("Goal contribution added.");
     } catch {
+      notify("Could not add the contribution.", "error");
       loadGoals();
     }
   };
@@ -1022,9 +1135,12 @@ if (authLoading) {
 
   return (
     <div className="app dashboard-app" data-mobile-view={mobileView}>
+      {toast && <div className={`app-toast ${toast.type}`} role="status" aria-live="polite"><span>{toast.type === "error" ? "!" : "✓"}</span>{toast.message}<button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
+      {dataLoading && isAuthenticated && <div className="data-loading-overlay" role="status" aria-live="polite"><span className="data-loading-spinner" /><strong>Getting your finances ready</strong><small>Loading transactions, goals and insights…</small></div>}
       {showAuthModal && (
         <AuthModal
           mode={authModalMode}
+          notify={notify}
           onClose={() => setShowAuthModal(false)}
           onSuccess={(userData) => {
             setUser(userData);
@@ -1076,13 +1192,13 @@ if (authLoading) {
               </div>
               <div className="nav-actions">
                 <button className="ghost" onClick={() => openAuth("login")}>Login</button>
+                <button className="ghost install-nav-button" onClick={handleInstallApp} disabled={isAppInstalled || installingPwa}>{isAppInstalled ? "Installed" : "Install app"}</button>
                 <button className="primary" onClick={() => openAuth("signup")}>Get started free</button>
               </div>
             </div>
           </nav>
 
           <div className="landing-shell">
-            <div className="scroll-progress-bar" id="gsap-progress" />
 
           {/* ── HERO ── */}
           <header className="hero-section">
@@ -1555,27 +1671,38 @@ if (authLoading) {
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
-                    <div className="profile-summary">
-                      <span className="profile-avatar-large" aria-hidden="true">{profileInitials}</span>
-                      <div>
-                        <strong>{user?.name || "Account"}</strong>
-                        <span>{user?.email || ""}</span>
+                    <div className="profile-menu-head">
+                      <div className="profile-summary">
+                        <span className="profile-avatar-large" aria-hidden="true">{profileInitials}</span>
+                        <div>
+                          <strong>{user?.name || "Account"}</strong>
+                          <span>{user?.email || ""}</span>
+                        </div>
                       </div>
+                      <span className="profile-account-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg> Account</span>
                     </div>
-                    <div className="profile-menu-section" aria-label="Application tools">
-                      <button type="button" role="menuitem" onClick={() => { openMobileView("add"); setShowProfileMenu(false); }}>
-                        <span aria-hidden="true">＋</span> Add transaction
+                    <div className="profile-menu-section profile-tools-section" aria-label="Application tools">
+                      <span className="profile-menu-label">QUICK ACTIONS</span>
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { openMobileView("add"); setShowProfileMenu(false); }}>
+                        <span className="profile-action-icon add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
+                        <span className="profile-action-copy"><strong>Add transaction</strong><small>Record income, expense or investment</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
-                      <button type="button" role="menuitem" onClick={() => { handleExport(); setShowProfileMenu(false); }} disabled={!normalizedTransactions.length}>
-                        <span aria-hidden="true">↓</span> Export PDF
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { handleExport(); setShowProfileMenu(false); }} disabled={!normalizedTransactions.length}>
+                        <span className="profile-action-icon export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v3h16v-3"/></svg></span>
+                        <span className="profile-action-copy"><strong>Export report</strong><small>Download your transactions as PDF</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
-                      <button type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled || !deferredInstallPrompt}>
-                        <span aria-hidden="true">↗</span> {isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled}>
+                        <span className="profile-action-icon install"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M10 18h4"/></svg></span>
+                        <span className="profile-action-copy"><strong>{isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}</strong><small>{isAppInstalled ? "Ready on your device" : "Add a shortcut to your home screen"}</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
                     </div>
                     <div className="profile-menu-divider" />
-                    <button className="profile-logout" type="button" role="menuitem" onClick={() => { handleLogout(); setShowProfileMenu(false); }}>
-                      <span aria-hidden="true">↪</span> Log out
+                    <button className="profile-menu-action profile-logout" type="button" role="menuitem" onClick={() => { handleLogout(); setShowProfileMenu(false); }}>
+                      <span className="profile-action-icon logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></span>
+                      <span className="profile-action-copy"><strong>Log out</strong><small>Sign out of this account</small></span>
                     </button>
                 </div>
               )}
@@ -1593,69 +1720,114 @@ if (authLoading) {
                   <button className="ghost small" onClick={() => { setShowForm(false); setMobileView("home"); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
                 </div>
 
-                <div className="pill-group" style={{ marginBottom: 16 }}>
+                <div className="entry-mode-switch" role="group" aria-label="Entry mode">
                   <button type="button"
-                    className={!goalContribMode ? "pill active" : "pill"}
+                    className={!goalContribMode ? "entry-mode-option active" : "entry-mode-option"}
                     onClick={() => setGoalContribMode(false)}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
                     Transaction
                   </button>
                   <button type="button"
-                    className={goalContribMode ? "pill active" : "pill"}
+                    className={goalContribMode ? "entry-mode-option active" : "entry-mode-option"}
                     onClick={() => setGoalContribMode(true)}>
-                    🎯 Allocate to Goal
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>
+                    Goal contribution
                   </button>
                 </div>
 
                 {!goalContribMode ? (
-                  <form className="expense-form" onSubmit={handleSubmit}>
-                    <label>
-                      Title
-                      <input type="text" name="title" placeholder="e.g. Grocery run"
-                        value={formState.title} onChange={handleChange} />
-                    </label>
-                    <label>
-                      Category
-                      <select name="category" value={formState.category} onChange={handleChange}>
-                        <option>Food</option>
-                        <option>Transport</option>
-                        <option>Home</option>
-                        <option>Bike</option>
-                        <option>Car</option>
-                        <option>Travel</option>
-                        <option>Education</option>
-                        <option>Health</option>
-                        <option>Lifestyle</option>
-                        <option>Bills</option>
-                        <option>Investment</option>
-                        <option>Income</option>
-                        <option>Other</option>
-                      </select>
-                    </label>
-                    <label>
-                      Amount
-                      <input type="number" inputMode="decimal" name="amount" min="0" step="0.01" placeholder="0.00"
-                        value={formState.amount} onChange={handleChange} />
-                    </label>
-                    <label>
-                      Type
-                      <div className="pill-group">
-                        {["expense", "income", "investment"].map((t) => (
-                          <button key={t} type="button"
-                            className={formState.type === t ? "pill active" : "pill"}
-                            onClick={() => setFormState((prev) => ({ ...prev, type: t }))}>
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                  <form className="expense-form premium-entry-form" onSubmit={handleSubmit}>
+                    <div className="entry-amount-panel">
+                      <div className="entry-amount-heading">
+                        <span>How much?</span>
+                        <span className="entry-currency-tag">INR · ₹</span>
+                      </div>
+                      <div className="entry-amount-input">
+                        <span aria-hidden="true">₹</span>
+                        <input type="number" inputMode="decimal" name="amount" min="0" step="0.01" placeholder="0"
+                          aria-label="Amount in rupees" value={formState.amount} onChange={handleChange} required />
+                      </div>
+                      <p>Enter the amount for this transaction</p>
+                    </div>
+
+                    <fieldset className="entry-type-field">
+                      <legend>Choose transaction type</legend>
+                      <div className="entry-type-options">
+                        {[
+                          { value: "expense", label: "Expense", note: "Money out", icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6 6 6 6-6"/></svg> },
+                          { value: "income", label: "Income", note: "Money in", icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg> },
+                          { value: "investment", label: "Invest", note: "Build wealth", icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 6-6 4 3 6-8"/><path d="M15 6h5v5"/></svg> },
+                        ].map((t) => (
+                          <button key={t.value} type="button"
+                            className={formState.type === t.value ? `entry-type-card selected ${t.value}` : "entry-type-card"}
+                            aria-pressed={formState.type === t.value}
+                            onClick={() => setFormState((prev) => ({ ...prev, type: t.value }))}>
+                            <span className="entry-type-icon">{t.icon}</span>
+                            <span className="entry-type-copy"><strong>{t.label}</strong><small>{t.note}</small></span>
+                            <span className="entry-type-check" aria-hidden="true">✓</span>
                           </button>
                         ))}
                       </div>
-                    </label>
-                    <label>
-                      Date
-                      <input type="date" name="date" value={formState.date} onChange={handleChange} />
-                    </label>
+                    </fieldset>
+
+                    <div className="entry-details-grid">
+                      <label className="entry-field entry-title-field">
+                        <span>What was it for?</span>
+                        <input type="text" name="title" placeholder="e.g. Groceries, salary, cab ride"
+                          value={formState.title} onChange={handleChange} required />
+                      </label>
+                      <div className="entry-field category-field">
+                        <span id="entry-category-label">Category</span>
+                        <div className="category-picker" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setCategoryMenuOpen(false); }} onKeyDown={(event) => { if (event.key === "Escape") setCategoryMenuOpen(false); }}>
+                          <button
+                            type="button"
+                            className={`category-picker-trigger${categoryMenuOpen ? " open" : ""}`}
+                            aria-haspopup="listbox"
+                            aria-expanded={categoryMenuOpen}
+                            aria-labelledby="entry-category-label"
+                            onClick={() => setCategoryMenuOpen((open) => !open)}
+                          >
+                            <CategoryIcon category={formState.category} type={formState.type} className="category-picker-current-icon" />
+                            <span className="category-picker-current">
+                              <strong>{formState.category}</strong>
+                              <small>Choose a category</small>
+                            </span>
+                            <svg className="category-picker-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                          </button>
+                          {categoryMenuOpen && (
+                            <div className="category-picker-menu" role="listbox" aria-label="Transaction categories">
+                              {["Food", "Groceries", "Medicine", "Transport", "Home", "Rent", "Utilities", "Bike", "Car", "Travel", "Education", "Health", "Lifestyle", "Bills", "Investment", "Salary", "Income", "Other"].map((category) => (
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={formState.category === category}
+                                  className={`category-picker-option${formState.category === category ? " selected" : ""}`}
+                                  key={category}
+                                  onClick={() => {
+                                    setFormState((prev) => ({ ...prev, category }));
+                                    setCategoryMenuOpen(false);
+                                  }}
+                                >
+                                  <CategoryIcon category={category} type={formState.type} className="category-picker-option-icon" />
+                                  <span>{category}</span>
+                                  {formState.category === category && <svg className="category-picker-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <label className="entry-field">
+                        <span>Transaction date</span>
+                        <input type="date" name="date" value={formState.date} onChange={handleChange} required />
+                      </label>
+                    </div>
                     {formFeedback && <p className="form-feedback" role="status">{formFeedback}</p>}
-                    <button className="primary form-submit" type="submit" disabled={formSubmitting}>
-                      {formSubmitting ? "Saving..." : "Save entry"}
+                    <button className="primary form-submit entry-save-button" type="submit" disabled={formSubmitting}>
+                      {formSubmitting ? "Saving entry..." : "Save transaction"}
+                      {!formSubmitting && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>}
                     </button>
+                    <p className="entry-form-footnote">Your finances, neatly in one place.</p>
                   </form>
                 ) : (
                   <form className="expense-form" onSubmit={handleGoalContribSubmit}>
@@ -1771,6 +1943,52 @@ if (authLoading) {
             </article>
           </section>
 
+          <section className="home-insights dashboard-mobile-section dashboard-mobile-home" aria-label="Home insights">
+            <article className="panel home-activity-panel">
+              <div className="panel-header">
+                <div>
+                  <h3>Recent transactions</h3>
+                  <p className="muted">A quick look at your latest activity</p>
+                </div>
+                <button type="button" className="text-action" onClick={() => openMobileView("transactions")}>See all <span aria-hidden="true">→</span></button>
+              </div>
+              <div className="home-activity-list">
+                {normalizedTransactions.length === 0 ? (
+                  <div className="home-empty">
+                    <span className="home-empty-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+                    </span>
+                    <strong>No transactions yet</strong>
+                    <p>Add your first entry to see your activity here.</p>
+                    <button type="button" className="primary home-empty-action" onClick={() => openMobileView("add")}>Add transaction</button>
+                  </div>
+                ) : normalizedTransactions.slice(0, 4).map((item) => (
+                  <div className="home-activity-row" key={item._id ?? item.id}>
+                    <CategoryIcon category={item.category} type={item.type} className="home-category-icon" />
+                    <div className="home-activity-copy">
+                      <strong>{item.title}</strong>
+                      <span>{item.category} · {formatDate(item.date)}</span>
+                    </div>
+                    <strong className={`home-activity-amount ${item.type === "income" ? "positive" : item.type === "investment" ? "investment" : "negative"}`}>
+                      {item.type === "income" ? "+" : item.type === "investment" ? "" : "−"}{formatCurrency.format(Math.abs(item.amount))}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="panel home-plan-panel">
+              <div className="home-plan-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h17"/><path d="m7 15 4-4 3 2 6-7"/><path d="M16 6h4v4"/></svg>
+              </div>
+              <div className="home-plan-copy">
+                <h3>Your money goals</h3>
+                <p>{goals.length ? `You’re tracking ${goals.length} ${goals.length === 1 ? "goal" : "goals"}. Keep your plans moving forward.` : "Give your money a direction by setting your first spending goal."}</p>
+                <button type="button" className="text-action" onClick={() => openMobileView("transactions")}>{goals.length ? "View goals" : "Explore goals"} <span aria-hidden="true">→</span></button>
+              </div>
+            </article>
+          </section>
+
           <section className="content-grid dashboard-mobile-section dashboard-mobile-analytics" id="analytics-section">
             <article className="panel panel-chart burn-panel">
               <div className="burn-panel-header">
@@ -1819,59 +2037,52 @@ if (authLoading) {
               ) : (
                 (() => {
                   const days = dailySeries.daysInMonth;
-                  const BAR_MAX_H = 100;
+                  const maxIncome = Math.max(...dailySeries.income, 0);
+                  const maxExpense = Math.max(...dailySeries.expense, 0);
+                  const chartMoney = (value) => new Intl.NumberFormat("en-IN", {
+                    style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1
+                  }).format(value);
+                  const [chartYear, chartMonth] = selectedMonth.split("-").map(Number);
+                  const today = new Date();
+                  const isCurrentMonth = today.getFullYear() === chartYear && today.getMonth() + 1 === chartMonth;
                   return (
-                    <div className="burnv2-wrap">
-                      <div className="burnv2-yaxis">
-                        <span className="burnv2-ylab green">{formatCurrency.format(maxDailyMagnitude)}</span>
-                        <span className="burnv2-ylab mid">— 0 —</span>
-                        <span className="burnv2-ylab red">{formatCurrency.format(maxDailyMagnitude)}</span>
+                    <div className="burnv3">
+                      <div className="burnv3-meta">
+                        <span>Daily activity</span>
+                        <span className="burnv3-scale-note">Each series scaled independently</span>
                       </div>
-
-                      <div className="burnv2-scroll">
-                        <div className="burnv2-grid">
-                          <div className="burnv2-gridline top" />
-                          <div className="burnv2-gridline upper-mid" />
-                          <div className="burnv2-gridline mid" />
-                          <div className="burnv2-gridline lower-mid" />
-                          <div className="burnv2-gridline bot" />
-                          <div className="burnv2-baseline" />
+                      <div className="burnv3-legend">
+                        <span><i className="burnv3-dot income" />Income <b>{chartMoney(maxIncome)} peak</b></span>
+                        <span><i className="burnv3-dot expense" />Expense <b>{chartMoney(maxExpense)} peak</b></span>
+                      </div>
+                      <div className="burnv3-chart" role="img" aria-label={`Daily income and expense for ${monthLabel}`}>
+                        <div className="burnv3-gridlines" aria-hidden="true">
+                          <i /><i /><i /><i />
                         </div>
-
-                        <div className="burnv2-bars">
+                        <div className="burnv3-columns" style={{ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` }}>
                           {Array.from({ length: days }, (_, i) => {
                             const inc = dailySeries.income[i] || 0;
                             const exp = dailySeries.expense[i] || 0;
-                            const incH = maxDailyMagnitude ? Math.max(2, Math.round((inc / maxDailyMagnitude) * BAR_MAX_H)) : 0;
-                            const expH = maxDailyMagnitude ? Math.max(2, Math.round((exp / maxDailyMagnitude) * BAR_MAX_H)) : 0;
-                            const hasActivity = inc > 0 || exp > 0;
-                            const isToday = new Date().getDate() === i + 1 &&
-                              new Date().toISOString().slice(0,7) === selectedMonth;
+                            const incHeight = maxIncome ? Math.max(inc > 0 ? 5 : 0, (inc / maxIncome) * 100) : 0;
+                            const expHeight = maxExpense ? Math.max(exp > 0 ? 5 : 0, (exp / maxExpense) * 100) : 0;
+                            const isToday = isCurrentMonth && today.getDate() === i + 1;
+                            const showLabel = i === 0 || (i + 1) % 5 === 0 || i === days - 1;
+                            const dateLabel = new Date(chartYear, chartMonth - 1, i + 1).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
                             return (
-                              <div className={`burnv2-col${hasActivity ? " active" : ""}${isToday ? " today" : ""}`} key={i}>
-                                <div className="burnv2-tooltip">
-                                  <span className="tt-day">Day {i + 1}</span>
-                                  {inc > 0 && <span className="tt-row inc">▲ {formatCurrency.format(inc)}</span>}
-                                  {exp > 0 && <span className="tt-row exp">▼ {formatCurrency.format(exp)}</span>}
-                                  {inc === 0 && exp === 0 && <span className="tt-row" style={{color:"rgba(255,255,255,0.3)"}}>No activity</span>}
+                              <div className={`burnv3-day${isToday ? " today" : ""}`} key={i}
+                                title={`${dateLabel} · Income: ${formatCurrency.format(inc)} · Expense: ${formatCurrency.format(exp)}`}>
+                                <div className="burnv3-bars">
+                                  <span className="burnv3-bar income" style={{ height: `${incHeight}%` }} />
+                                  <span className="burnv3-bar expense" style={{ height: `${expHeight}%` }} />
                                 </div>
-                                <div className="burnv2-half up">
-                                  {inc > 0
-                                    ? <div className="burnv2-bar inc" style={{ height: incH }} />
-                                    : <div className="burnv2-bar-empty" />
-                                  }
-                                </div>
-                                <div className="burnv2-half dn">
-                                  {exp > 0
-                                    ? <div className="burnv2-bar exp" style={{ height: expH }} />
-                                    : <div className="burnv2-bar-empty" />
-                                  }
-                                </div>
-                                <span className="burnv2-day">{i + 1}</span>
+                                <span className={`burnv3-day-label${showLabel ? " visible" : ""}`}>{showLabel ? i + 1 : ""}</span>
                               </div>
                             );
                           })}
                         </div>
+                      </div>
+                      <div className="burnv3-foot">
+                        <span>1</span><span>{Math.ceil(days / 2)}</span><span>{days}</span>
                       </div>
                     </div>
                   );
@@ -1975,8 +2186,9 @@ if (authLoading) {
                   <p className="empty-state">No transactions yet. Add your first expense.</p>
                 ) : (
                   pagedTransactions.map((item) => (
-                    <div className="transaction" key={item._id ?? item.id}>
-                      <div>
+                    <div className="transaction transaction-with-icon" key={item._id ?? item.id}>
+                      <CategoryIcon category={item.category} type={item.type} className="transaction-category-icon" />
+                      <div className="transaction-main">
                         <p className="transaction-title">{item.title}</p>
                         <p className="muted">{item.category} · {formatDate(item.date)}</p>
                       </div>
@@ -2128,16 +2340,10 @@ if (authLoading) {
               )}
             </article>
           </section>
-<<<<<<< HEAD
           {/* ══════════════════════════════════════════
               MONEY STORY SECTION
           ══════════════════════════════════════════ */}
           <section className="content-grid dashboard-mobile-section dashboard-mobile-analytics">
-=======
-
-          {/* ══ MONEY STORY SECTION ══ */}
-          <section className="content-grid">
->>>>>>> af9d595007c377a16269e34a2623e4df4a138d96
             <article className="panel money-story-panel wide">
               <div className="ms-header">
                 <div className="ai-panel-title-group">
@@ -2396,20 +2602,20 @@ if (authLoading) {
             </article>
           </section>
           <nav className="dashboard-bottom-nav" aria-label="Dashboard navigation">
-            <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")}>
-              <span aria-hidden="true">⌂</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")} aria-current={mobileView === "home" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></svg>
               <small>Home</small>
             </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "transactions" ? "active" : ""}`} onClick={() => openMobileView("transactions")}>
-              <span aria-hidden="true">≡</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "transactions" ? "active" : ""}`} onClick={() => openMobileView("transactions")} aria-current={mobileView === "transactions" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></svg>
               <small>Transactions</small>
             </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "analytics" ? "active" : ""}`} onClick={() => openMobileView("analytics")}>
-              <span aria-hidden="true">◔</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "analytics" ? "active" : ""}`} onClick={() => openMobileView("analytics")} aria-current={mobileView === "analytics" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>
               <small>Analytics</small>
             </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "add" ? "active" : ""}`} onClick={() => openMobileView("add")}>
-              <span aria-hidden="true">＋</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "add" ? "active" : ""}`} onClick={() => openMobileView("add")} aria-current={mobileView === "add" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
               <small>Add</small>
             </button>
           </nav>

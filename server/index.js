@@ -7,6 +7,7 @@ const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const MONGODB_URI =
@@ -21,7 +22,7 @@ const CLIENT_URLS = (process.env.CLIENT_URLS || CLIENT_URL)
   .split(",")
   .map((url) => url.trim())
   .filter(Boolean);
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
+const JWT_SECRET = process.env.JWT_SECRET || (IS_PRODUCTION ? "" : "dev_secret_change_me");
 const TOKEN_COOKIE = "token";
 const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const IS_PRODUCTION_LIKE =
@@ -33,6 +34,11 @@ const COOKIE_SAME_SITE =
 const COOKIE_SECURE = process.env.COOKIE_SECURE
   ? process.env.COOKIE_SECURE === "true"
   : IS_PRODUCTION_LIKE;
+
+if (IS_PRODUCTION && (!JWT_SECRET || JWT_SECRET.length < 32)) {
+  console.error("JWT_SECRET must be set to a random value of at least 32 characters in production.");
+  process.exit(1);
+}
 
 if (!MONGODB_URI) {
   console.error("Missing MONGODB_URI in production environment.");
@@ -102,11 +108,7 @@ const GoalContribution = mongoose.model("GoalContribution", goalContributionSche
 
 const signToken = (user) =>
   jwt.sign(
-    {
-      sub: user._id.toString(),
-      email: user.email,
-      name: user.name,
-    },
+    { sub: user._id.toString() },
     JWT_SECRET,
     { expiresIn: "7d" },
   );
@@ -129,7 +131,7 @@ const clearAuthCookie = (res) => {
 };
 
 const getTokenFromRequest = (req) => {
-  // 1. Check Authorization header first (used by mobile/PWA with localStorage)
+  // 1. Accept a legacy bearer token for older clients.
   const authHeader = req.header("authorization");
   if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
     return authHeader.slice(7);
@@ -170,21 +172,63 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    const origin = req.get("origin");
+    if (origin && !CLIENT_URLS.includes(origin)) {
+      return res.status(403).json({ error: "Request origin is not allowed." });
+    }
+  }
+  next();
+});
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (IS_PRODUCTION) res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  if (req.path.startsWith("/api")) res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
+app.use(express.json({ limit: "32kb" }));
 app.use(cookieParser());
+
+const authAttempts = new Map();
+const authRateLimit = (req, res, next) => {
+  const key = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  if (authAttempts.size > 5000) {
+    for (const [ip, attempt] of authAttempts) {
+      if (now - attempt.startedAt > 15 * 60 * 1000) authAttempts.delete(ip);
+    }
+  }
+  const entry = authAttempts.get(key);
+  if (!entry || now - entry.startedAt > 15 * 60 * 1000) {
+    authAttempts.set(key, { startedAt: now, count: 1 });
+    return next();
+  }
+  if (entry.count >= 12) {
+    res.setHeader("Retry-After", "900");
+    return res.status(429).json({ error: "Too many sign-in attempts. Please try again in 15 minutes." });
+  }
+  entry.count += 1;
+  return next();
+};
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", authRateLimit, async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
-    if (!name || !email || !password) {
+    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string" || !name.trim() || !email.trim() || !password) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-    if (password.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    if (name.trim().length > 80 || email.trim().length > 254 || password.length < 8 || password.length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: "Enter a valid name and email. Password must be 8–128 characters." });
     }
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await User.findOne({ email: normalizedEmail });
@@ -203,7 +247,6 @@ app.post("/api/auth/register", async (req, res) => {
     const token = signToken(user);
     setAuthCookie(res, token);
 
-    // ── Return token in body so mobile clients can store it in localStorage ──
     return res.status(201).json({
       token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
@@ -214,10 +257,10 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", authRateLimit, async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    if (!email || !password) {
+    if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password || email.length > 254 || password.length > 128) {
       return res.status(400).json({ error: "Missing email or password" });
     }
     const normalizedEmail = email.toLowerCase().trim();
@@ -232,7 +275,6 @@ app.post("/api/auth/login", async (req, res) => {
     const token = signToken(user);
     setAuthCookie(res, token);
 
-    // ── Return token in body so mobile clients can store it in localStorage ──
     return res.json({
       token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
@@ -264,12 +306,12 @@ app.get("/api/transactions", requireAuth, async (req, res) => {
 app.post("/api/transactions", requireAuth, async (req, res) => {
   try {
     const { title, category, amount, type, date } = req.body || {};
-    if (!title || !category || !amount || !type || !date) {
+    if (typeof title !== "string" || typeof category !== "string" || !title.trim() || !category.trim() || title.trim().length > 120 || category.trim().length > 50 || amount === undefined || !type || !date) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Amount must be a positive number" });
     }
 
@@ -287,7 +329,7 @@ app.post("/api/transactions", requireAuth, async (req, res) => {
     const created = await Transaction.create({
       user: req.user._id,
       title: title.trim(),
-      category,
+      category: category.trim(),
       date: dateObj,
       amount: signedAmount,
       type,
@@ -329,11 +371,11 @@ app.get("/api/goals", requireAuth, async (req, res) => {
 app.post("/api/goals", requireAuth, async (req, res) => {
   try {
     const { name, category, period, amount } = req.body || {};
-    if (!name || !category || !period || !amount) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (typeof name !== "string" || typeof category !== "string" || !name.trim() || name.trim().length > 80 || !category.trim() || category.trim().length > 50 || !period || amount === undefined) {
+      return res.status(400).json({ error: "Missing or invalid required fields" });
     }
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Amount must be a positive number" });
     }
     if (!["monthly", "quarterly", "yearly"].includes(period)) {
@@ -342,7 +384,7 @@ app.post("/api/goals", requireAuth, async (req, res) => {
     const goal = await Goal.create({
       user: req.user._id,
       name: name.trim(),
-      category,
+      category: category.trim(),
       period,
       amount: parsedAmount,
     });
@@ -356,7 +398,7 @@ app.put("/api/goals/:id", requireAuth, async (req, res) => {
   try {
     const { name, category, period, amount } = req.body || {};
     const parsedAmount = Number(amount);
-    if (!name || !category || !period || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (typeof name !== "string" || typeof category !== "string" || !name.trim() || name.trim().length > 80 || !category.trim() || category.length > 50 || !period || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Invalid fields" });
     }
     if (!["monthly", "quarterly", "yearly"].includes(period)) {
@@ -400,7 +442,7 @@ app.post("/api/goals/:goalId/contributions", requireAuth, async (req, res) => {
   try {
     const { amount, note } = req.body || {};
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Amount must be a positive number" });
     }
     const goal = await Goal.findOne({ _id: req.params.goalId, user: req.user._id });
@@ -410,7 +452,7 @@ app.post("/api/goals/:goalId/contributions", requireAuth, async (req, res) => {
       user: req.user._id,
       goal: req.params.goalId,
       amount: parsedAmount,
-      note: (note || "").trim(),
+      note: typeof note === "string" ? note.trim().slice(0, 240) : "",
     });
     res.status(201).json(contribution);
   } catch (error) {
