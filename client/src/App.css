@@ -6137,7 +6137,7 @@ html, body, #root, .app {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: clip;
+  overflow-x: hidden !important;
 }
 body { position: relative; }
 img, svg, canvas, video, iframe { max-width: 100%; }
@@ -6232,3 +6232,7 @@ img, svg, canvas, video, iframe { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .data-loading-spinner { animation-duration: 2s; }
 }
+
+/* Keep the document viewport from ever gaining a horizontal scroll track. */
+html, body { overflow-x: hidden !important; }
+.app-toast.info > span { background: #e0f2fe; color: #0369a1; }
