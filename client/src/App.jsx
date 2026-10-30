@@ -1587,69 +1587,91 @@ if (authLoading) {
                   <button className="ghost small" onClick={() => { setShowForm(false); setMobileView("home"); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
                 </div>
 
-                <div className="pill-group" style={{ marginBottom: 16 }}>
+                <div className="entry-mode-switch" role="group" aria-label="Entry mode">
                   <button type="button"
-                    className={!goalContribMode ? "pill active" : "pill"}
+                    className={!goalContribMode ? "entry-mode-option active" : "entry-mode-option"}
                     onClick={() => setGoalContribMode(false)}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
                     Transaction
                   </button>
                   <button type="button"
-                    className={goalContribMode ? "pill active" : "pill"}
+                    className={goalContribMode ? "entry-mode-option active" : "entry-mode-option"}
                     onClick={() => setGoalContribMode(true)}>
-                    🎯 Allocate to Goal
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>
+                    Goal contribution
                   </button>
                 </div>
 
                 {!goalContribMode ? (
-                  <form className="expense-form" onSubmit={handleSubmit}>
-                    <label>
-                      Title
-                      <input type="text" name="title" placeholder="e.g. Grocery run"
-                        value={formState.title} onChange={handleChange} />
-                    </label>
-                    <label>
-                      Category
-                      <select name="category" value={formState.category} onChange={handleChange}>
-                        <option>Food</option>
-                        <option>Transport</option>
-                        <option>Home</option>
-                        <option>Bike</option>
-                        <option>Car</option>
-                        <option>Travel</option>
-                        <option>Education</option>
-                        <option>Health</option>
-                        <option>Lifestyle</option>
-                        <option>Bills</option>
-                        <option>Investment</option>
-                        <option>Income</option>
-                        <option>Other</option>
-                      </select>
-                    </label>
-                    <label>
-                      Amount
-                      <input type="number" inputMode="decimal" name="amount" min="0" step="0.01" placeholder="0.00"
-                        value={formState.amount} onChange={handleChange} />
-                    </label>
-                    <label>
-                      Type
-                      <div className="pill-group">
-                        {["expense", "income", "investment"].map((t) => (
-                          <button key={t} type="button"
-                            className={formState.type === t ? "pill active" : "pill"}
-                            onClick={() => setFormState((prev) => ({ ...prev, type: t }))}>
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                  <form className="expense-form premium-entry-form" onSubmit={handleSubmit}>
+                    <div className="entry-amount-panel">
+                      <div className="entry-amount-heading">
+                        <span>How much?</span>
+                        <span className="entry-currency-tag">INR · ₹</span>
+                      </div>
+                      <div className="entry-amount-input">
+                        <span aria-hidden="true">₹</span>
+                        <input type="number" inputMode="decimal" name="amount" min="0" step="0.01" placeholder="0"
+                          aria-label="Amount in rupees" value={formState.amount} onChange={handleChange} required />
+                      </div>
+                      <p>Enter the amount for this transaction</p>
+                    </div>
+
+                    <fieldset className="entry-type-field">
+                      <legend>Choose transaction type</legend>
+                      <div className="entry-type-options">
+                        {[
+                          { value: "expense", label: "Expense", note: "Money out", icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6 6 6 6-6"/></svg> },
+                          { value: "income", label: "Income", note: "Money in", icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg> },
+                          { value: "investment", label: "Invest", note: "Build wealth", icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 6-6 4 3 6-8"/><path d="M15 6h5v5"/></svg> },
+                        ].map((t) => (
+                          <button key={t.value} type="button"
+                            className={formState.type === t.value ? `entry-type-card selected ${t.value}` : "entry-type-card"}
+                            aria-pressed={formState.type === t.value}
+                            onClick={() => setFormState((prev) => ({ ...prev, type: t.value }))}>
+                            <span className="entry-type-icon">{t.icon}</span>
+                            <span className="entry-type-copy"><strong>{t.label}</strong><small>{t.note}</small></span>
+                            <span className="entry-type-check" aria-hidden="true">✓</span>
                           </button>
                         ))}
                       </div>
-                    </label>
-                    <label>
-                      Date
-                      <input type="date" name="date" value={formState.date} onChange={handleChange} />
-                    </label>
+                    </fieldset>
+
+                    <div className="entry-details-grid">
+                      <label className="entry-field entry-title-field">
+                        <span>What was it for?</span>
+                        <input type="text" name="title" placeholder="e.g. Groceries, salary, cab ride"
+                          value={formState.title} onChange={handleChange} required />
+                      </label>
+                      <label className="entry-field">
+                        <span>Category</span>
+                        <select name="category" value={formState.category} onChange={handleChange}>
+                          <option>Food</option>
+                          <option>Transport</option>
+                          <option>Home</option>
+                          <option>Bike</option>
+                          <option>Car</option>
+                          <option>Travel</option>
+                          <option>Education</option>
+                          <option>Health</option>
+                          <option>Lifestyle</option>
+                          <option>Bills</option>
+                          <option>Investment</option>
+                          <option>Income</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                      <label className="entry-field">
+                        <span>Transaction date</span>
+                        <input type="date" name="date" value={formState.date} onChange={handleChange} required />
+                      </label>
+                    </div>
                     {formFeedback && <p className="form-feedback" role="status">{formFeedback}</p>}
-                    <button className="primary form-submit" type="submit" disabled={formSubmitting}>
-                      {formSubmitting ? "Saving..." : "Save entry"}
+                    <button className="primary form-submit entry-save-button" type="submit" disabled={formSubmitting}>
+                      {formSubmitting ? "Saving entry..." : "Save transaction"}
+                      {!formSubmitting && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>}
                     </button>
+                    <p className="entry-form-footnote">Your finances, neatly in one place.</p>
                   </form>
                 ) : (
                   <form className="expense-form" onSubmit={handleGoalContribSubmit}>
