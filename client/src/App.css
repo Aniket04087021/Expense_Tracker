@@ -6095,3 +6095,38 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
   .section-head { margin-bottom: 26px; }
   .section-head h2 { font-size: 1.8rem; }
 }
+
+
+/* Calm interaction system: no scroll choreography, 3D tilt or exaggerated motion. */
+.dashboard-preview,
+.dashboard-preview:hover,
+.pdf-preview,
+.pdf-preview:hover,
+.msl-story-card,
+.msl-story-card:hover {
+  transform: none !important;
+}
+.feature-card,
+.feature-card:hover,
+.insight-card,
+.insight-card:hover,
+.platform-card,
+.platform-card:not(.dim):hover {
+  transform: none !important;
+}
+.feature-card,
+.insight-card,
+.platform-card,
+.dashboard-preview,
+.pdf-preview,
+.msl-story-card,
+.landing-nav .nav-links a,
+.landing-shell button {
+  transition: border-color .18s ease, background-color .18s ease,
+              box-shadow .18s ease, color .18s ease !important;
+}
+.feature-card:hover,
+.insight-card:hover,
+.platform-card:not(.dim):hover {
+  box-shadow: 0 12px 28px rgba(15,23,42,.07) !important;
+}
