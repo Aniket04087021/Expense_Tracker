@@ -372,8 +372,8 @@ app.get("/api/goals", requireAuth, async (req, res) => {
 app.post("/api/goals", requireAuth, async (req, res) => {
   try {
     const { name, category, period, amount } = req.body || {};
-    if (!name || !category || !period || !amount) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (typeof name !== "string" || typeof category !== "string" || !name.trim() || name.trim().length > 80 || !category.trim() || category.trim().length > 50 || !period || amount === undefined) {
+      return res.status(400).json({ error: "Missing or invalid required fields" });
     }
     const parsedAmount = Number(amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
@@ -385,7 +385,7 @@ app.post("/api/goals", requireAuth, async (req, res) => {
     const goal = await Goal.create({
       user: req.user._id,
       name: name.trim(),
-      category,
+      category: category.trim(),
       period,
       amount: parsedAmount,
     });
@@ -453,7 +453,7 @@ app.post("/api/goals/:goalId/contributions", requireAuth, async (req, res) => {
       user: req.user._id,
       goal: req.params.goalId,
       amount: parsedAmount,
-      note: (note || "").trim(),
+      note: typeof note === "string" ? note.trim().slice(0, 240) : "",
     });
     res.status(201).json(contribution);
   } catch (error) {
