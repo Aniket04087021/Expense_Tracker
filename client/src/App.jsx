@@ -187,7 +187,7 @@ const apiRequest = async (path, options = {}) => {
   return response;
 };
 
-function AuthModal({ mode, onClose, onSuccess }) {
+function AuthModal({ mode, onClose, onSuccess, notify }) {
   const [authMode, setAuthMode] = useState(mode || "login");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
@@ -203,10 +203,12 @@ function AuthModal({ mode, onClose, onSuccess }) {
     const trimmedName = authName.trim();
     if (!trimmedEmail || !trimmedPassword) {
       setAuthError("Email and password are required.");
+      notify("Enter your email and password to continue.", "error");
       return;
     }
     if (authMode === "signup" && !trimmedName) {
       setAuthError("Name is required for signup.");
+      notify("Please enter your name to create an account.", "error");
       return;
     }
     const payload =
@@ -221,13 +223,17 @@ function AuthModal({ mode, onClose, onSuccess }) {
       );
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setAuthError(data.error || "Authentication failed.");
+        const message = data.error || (authMode === "login" ? "Incorrect email or password." : "Could not create your account.");
+        setAuthError(message);
+        notify(message, "error");
         return;
       }
       if (data.token) localStorage.setItem("token", data.token);
+      notify(authMode === "login" ? "Login successful. Welcome back!" : "Account created successfully. Welcome to Expnse!");
       onSuccess(data.user || null);
     } catch {
       setAuthError("Authentication failed.");
+      notify("Unable to connect. Please try again.", "error");
     } finally {
       setAuthLoading(false);
     }
@@ -1134,6 +1140,7 @@ if (authLoading) {
       {showAuthModal && (
         <AuthModal
           mode={authModalMode}
+          notify={notify}
           onClose={() => setShowAuthModal(false)}
           onSuccess={(userData) => {
             setUser(userData);
