@@ -257,6 +257,7 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState("login");
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -366,6 +367,8 @@ function App() {
         }
       } catch {
         setUser(null);
+      } finally {
+        setAuthLoading(false);
       }
     };
     initAuth();
