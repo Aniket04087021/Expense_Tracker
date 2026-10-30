@@ -174,11 +174,13 @@ const goalCategoryOptions = [
 
 // ── Core API helper — always sends token via Authorization header if available ──
 const apiRequest = async (path, options = {}) => {
+  const token = localStorage.getItem("token");
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -222,6 +224,7 @@ function AuthModal({ mode, onClose, onSuccess }) {
         setAuthError(data.error || "Authentication failed.");
         return;
       }
+      if (data.token) localStorage.setItem("token", data.token);
       onSuccess(data.user || null);
     } catch {
       setAuthError("Authentication failed.");
@@ -416,7 +419,6 @@ function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        localStorage.removeItem("token");
         const response = await apiRequest("/auth/me", { method: "GET" });
         if (response.ok) {
           const data = await response.json();
@@ -871,6 +873,7 @@ function App() {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } finally {
+      localStorage.removeItem("token");
       setUser(null);
     }
   };
