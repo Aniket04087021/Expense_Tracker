@@ -866,7 +866,7 @@ function App() {
     setCurrentPage(1);
   };
 
-  // ── Logout: clear localStorage token ──
+  // ── Logout: invalidate the HttpOnly session cookie ──
   const handleLogout = async () => {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
