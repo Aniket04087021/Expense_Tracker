@@ -2384,20 +2384,20 @@ if (authLoading) {
             </article>
           </section>
           <nav className="dashboard-bottom-nav" aria-label="Dashboard navigation">
-            <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")}>
-              <span aria-hidden="true">⌂</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")} aria-current={mobileView === "home" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></svg>
               <small>Home</small>
             </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "transactions" ? "active" : ""}`} onClick={() => openMobileView("transactions")}>
-              <span aria-hidden="true">≡</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "transactions" ? "active" : ""}`} onClick={() => openMobileView("transactions")} aria-current={mobileView === "transactions" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></svg>
               <small>Transactions</small>
             </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "analytics" ? "active" : ""}`} onClick={() => openMobileView("analytics")}>
-              <span aria-hidden="true">◔</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "analytics" ? "active" : ""}`} onClick={() => openMobileView("analytics")} aria-current={mobileView === "analytics" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>
               <small>Analytics</small>
             </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "add" ? "active" : ""}`} onClick={() => openMobileView("add")}>
-              <span aria-hidden="true">＋</span>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "add" ? "active" : ""}`} onClick={() => openMobileView("add")} aria-current={mobileView === "add" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
               <small>Add</small>
             </button>
           </nav>
