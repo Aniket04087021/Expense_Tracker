@@ -5676,3 +5676,114 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
     border-color: #e1eee8 !important;
   }
 }
+
+
+/* Desktop and tablet dashboard layout — keep mobile app rules untouched. */
+@media (min-width: 769px) {
+  .dashboard-app {
+    width: min(100% - 48px, 1440px);
+    max-width: 1440px;
+    margin-inline: auto;
+    padding: 0 0 56px;
+  }
+  .dashboard-app .top-bar {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    margin: 0 0 26px;
+    padding: 16px 22px;
+    flex-wrap: nowrap;
+    border: 1px solid #e2e8f0;
+    border-top: 0;
+    border-radius: 0 0 20px 20px;
+    background: rgba(255,255,255,.96);
+    box-shadow: 0 8px 24px rgba(15,23,42,.06);
+    z-index: 100;
+  }
+  .dashboard-app .top-bar-heading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+  .dashboard-app .top-bar h1 {
+    font-size: clamp(1.45rem, 2vw, 2rem);
+    line-height: 1.2;
+  }
+  .dashboard-app .top-actions { align-items: center; }
+  .dashboard-app .summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .dashboard-app .summary-card {
+    min-width: 0;
+    min-height: 158px;
+    padding: 20px;
+  }
+  .dashboard-app .summary-card h2 {
+    font-size: clamp(1.45rem, 1.7vw, 2rem);
+    overflow-wrap: anywhere;
+  }
+  .dashboard-app .content-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .dashboard-app .content-grid > * { min-width: 0; }
+  .dashboard-app .panel.wide { grid-column: 1 / -1; }
+  .dashboard-app .panel {
+    min-width: 0;
+    padding: 22px;
+    border-radius: 20px;
+  }
+  .dashboard-app .panel-header {
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  .dashboard-app .panel-header > * { min-width: 0; }
+  .dashboard-app .home-insights {
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, .85fr);
+    gap: 18px;
+  }
+  .dashboard-app .money-story-panel .ms-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, .85fr);
+    align-items: start;
+    gap: 22px;
+  }
+  .dashboard-app .money-story-panel .ms-stats,
+  .dashboard-app .money-story-panel .ms-card-col { min-width: 0; }
+  .dashboard-app .money-story-panel .story-card {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+  .dashboard-app .dashboard-bottom-nav { display: none !important; }
+}
+@media (min-width: 769px) and (max-width: 1100px) {
+  .dashboard-app {
+    width: calc(100% - 40px);
+  }
+  .dashboard-app .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-app .content-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .dashboard-app .panel { padding: 18px; }
+  .dashboard-app .home-insights { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-app .money-story-panel .ms-body {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr);
+    gap: 16px;
+  }
+  .dashboard-app .top-bar { gap: 12px; padding-inline: 16px; }
+}
+@media (min-width: 1101px) {
+  .dashboard-app .content-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-app .money-story-panel .ms-body {
+    grid-template-columns: minmax(0, 1.1fr) minmax(360px, .9fr);
+  }
+}
+@media (min-width: 1500px) {
+  .dashboard-app { width: min(100% - 80px, 1480px); }
+  .dashboard-app .summary-grid { gap: 20px; }
+  .dashboard-app .content-grid { gap: 22px; }
+}
