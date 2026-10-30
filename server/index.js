@@ -108,11 +108,7 @@ const GoalContribution = mongoose.model("GoalContribution", goalContributionSche
 
 const signToken = (user) =>
   jwt.sign(
-    {
-      sub: user._id.toString(),
-      email: user.email,
-      name: user.name,
-    },
+    { sub: user._id.toString() },
     JWT_SECRET,
     { expiresIn: "7d" },
   );
@@ -135,7 +131,7 @@ const clearAuthCookie = (res) => {
 };
 
 const getTokenFromRequest = (req) => {
-  // 1. Check Authorization header first (used by mobile/PWA with localStorage)
+  // 1. Accept a legacy bearer token for older clients.
   const authHeader = req.header("authorization");
   if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
     return authHeader.slice(7);
@@ -191,6 +187,7 @@ app.use((req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (IS_PRODUCTION) res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   if (req.path.startsWith("/api")) res.setHeader("Cache-Control", "no-store");
   next();
 });
