@@ -5028,3 +5028,45 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
   }
   .dashboard-app .demo-mode-banner button { padding: 6px 9px; }
 }
+
+
+/* Monthly Burn: show the complete month at once, including late-month activity. */
+.dashboard-app .burnv2-scroll {
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  min-width: 0;
+}
+.dashboard-app .burnv2-bars {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 220px;
+  gap: clamp(1px, .35vw, 4px);
+  padding: 0 2px;
+  justify-content: stretch;
+}
+.dashboard-app .burnv2-col {
+  min-width: 0 !important;
+  max-width: none !important;
+  width: auto;
+  flex: initial !important;
+}
+.dashboard-app .burnv2-half { min-width: 0; }
+.dashboard-app .burnv2-bar,
+.dashboard-app .burnv2-bar-empty {
+  width: min(70%, 9px);
+  min-width: 2px;
+}
+.dashboard-app .burnv2-day {
+  font-size: clamp(.38rem, .65vw, .52rem);
+}
+@media (max-width: 768px) {
+  .dashboard-app .burnv2-bars { height: 178px; }
+  .dashboard-app .burnv2-wrap { min-height: 178px; }
+  .dashboard-app .burnv2-yaxis { min-width: 42px; max-width: 42px; }
+  .dashboard-app .burnv2-ylab { max-width: 40px; font-size: .5rem; }
+}
+@media (max-width: 380px) {
+  .dashboard-app .burnv2-bars { height: 158px; }
+  .dashboard-app .burnv2-wrap { min-height: 158px; }
+}
