@@ -1696,21 +1696,29 @@ if (authLoading) {
                       </label>
                       <label className="entry-field">
                         <span>Category</span>
-                        <select name="category" value={formState.category} onChange={handleChange}>
-                          <option>Food</option>
-                          <option>Transport</option>
-                          <option>Home</option>
-                          <option>Bike</option>
-                          <option>Car</option>
-                          <option>Travel</option>
-                          <option>Education</option>
-                          <option>Health</option>
-                          <option>Lifestyle</option>
-                          <option>Bills</option>
-                          <option>Investment</option>
-                          <option>Income</option>
-                          <option>Other</option>
-                        </select>
+                        <div className="category-select-wrap">
+                          <CategoryIcon category={formState.category} type={formState.type} className="category-select-icon" />
+                          <select name="category" value={formState.category} onChange={handleChange}>
+                            <option>Food</option>
+                            <option>Groceries</option>
+                            <option>Medicine</option>
+                            <option>Transport</option>
+                            <option>Home</option>
+                            <option>Rent</option>
+                            <option>Utilities</option>
+                            <option>Bike</option>
+                            <option>Car</option>
+                            <option>Travel</option>
+                            <option>Education</option>
+                            <option>Health</option>
+                            <option>Lifestyle</option>
+                            <option>Bills</option>
+                            <option>Investment</option>
+                            <option>Salary</option>
+                            <option>Income</option>
+                            <option>Other</option>
+                          </select>
+                        </div>
                       </label>
                       <label className="entry-field">
                         <span>Transaction date</span>
