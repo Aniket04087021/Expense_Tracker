@@ -1685,32 +1685,46 @@ if (authLoading) {
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                 >
-                    <div className="profile-summary">
-                      <span className="profile-avatar-large" aria-hidden="true">{profileInitials}</span>
-                      <div>
-                        <strong>{user?.name || "Account"}</strong>
-                        <span>{user?.email || ""}</span>
+                    <div className="profile-menu-head">
+                      <div className="profile-summary">
+                        <span className="profile-avatar-large" aria-hidden="true">{profileInitials}</span>
+                        <div>
+                          <strong>{user?.name || "Account"}</strong>
+                          <span>{user?.email || ""}</span>
+                        </div>
                       </div>
+                      <span className="profile-account-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg> Account</span>
                     </div>
-                    <div className="profile-menu-section" aria-label="Demo data">
-                      <button type="button" role="menuitem" onClick={toggleDemoData}>
-                        <span aria-hidden="true">▦</span> {demoSnapshot ? "Exit demo data" : "Load sample data"}
+                    <div className="profile-menu-section profile-demo-section" aria-label="Demo data">
+                      <span className="profile-menu-label">DEMO WORKSPACE</span>
+                      <button className="profile-menu-action profile-demo-action" type="button" role="menuitem" onClick={toggleDemoData}>
+                        <span className="profile-action-icon demo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 8h3v3H8zM14 8h3M14 11h3M8 15h9"/></svg></span>
+                        <span className="profile-action-copy"><strong>{demoSnapshot ? "Exit demo data" : "Explore with sample data"}</strong><small>{demoSnapshot ? "Return to your personal records" : "Preview the app with sample transactions"}</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
                     </div>
-                    <div className="profile-menu-section" aria-label="Application tools">
-                      <button type="button" role="menuitem" onClick={() => { openMobileView("add"); setShowProfileMenu(false); }}>
-                        <span aria-hidden="true">＋</span> Add transaction
+                    <div className="profile-menu-section profile-tools-section" aria-label="Application tools">
+                      <span className="profile-menu-label">QUICK ACTIONS</span>
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { openMobileView("add"); setShowProfileMenu(false); }}>
+                        <span className="profile-action-icon add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
+                        <span className="profile-action-copy"><strong>Add transaction</strong><small>Record income, expense or investment</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
-                      <button type="button" role="menuitem" onClick={() => { handleExport(); setShowProfileMenu(false); }} disabled={!normalizedTransactions.length}>
-                        <span aria-hidden="true">↓</span> Export PDF
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { handleExport(); setShowProfileMenu(false); }} disabled={!normalizedTransactions.length}>
+                        <span className="profile-action-icon export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v3h16v-3"/></svg></span>
+                        <span className="profile-action-copy"><strong>Export report</strong><small>Download your transactions as PDF</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
-                      <button type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled || !deferredInstallPrompt}>
-                        <span aria-hidden="true">↗</span> {isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled || !deferredInstallPrompt}>
+                        <span className="profile-action-icon install"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M10 18h4"/></svg></span>
+                        <span className="profile-action-copy"><strong>{isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}</strong><small>{isAppInstalled ? "Ready on your device" : "Add a shortcut to your home screen"}</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
                     </div>
                     <div className="profile-menu-divider" />
-                    <button className="profile-logout" type="button" role="menuitem" onClick={() => { handleLogout(); setShowProfileMenu(false); }}>
-                      <span aria-hidden="true">↪</span> Log out
+                    <button className="profile-menu-action profile-logout" type="button" role="menuitem" onClick={() => { handleLogout(); setShowProfileMenu(false); }}>
+                      <span className="profile-action-icon logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></span>
+                      <span className="profile-action-copy"><strong>Log out</strong><small>Sign out of this account</small></span>
                     </button>
                 </div>
               )}
