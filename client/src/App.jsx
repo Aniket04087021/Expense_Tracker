@@ -312,6 +312,8 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState("login");
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -356,6 +358,16 @@ function App() {
   const [storyDownloading, setStoryDownloading] = useState(false);
 
   const isAuthenticated = Boolean(user);
+
+  const notify = (message, type = "success") => {
+    setToast({ message, type, id: Date.now() });
+  };
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const profileMenuRef = useRef(null);
   const profileInitials = (user?.name || user?.email || "U")
@@ -428,10 +440,7 @@ function App() {
     initAuth();
   }, []);
 
-  useEffect(() => {
-    loadGoals();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
@@ -480,20 +489,52 @@ function App() {
     detectInstalled();
   }, []);
 
-  // ── Load transactions — uses apiRequest so token is sent via header ──
+  // Load the dashboard data together so the first screen never shows partial totals.
   useEffect(() => {
-    const loadTransactions = async () => {
-      if (!user) { setTransactions([]); return; }
-      try {
-        const response = await apiRequest("/transactions");
-        if (!response.ok) throw new Error("Failed to load transactions");
-        const data = await response.json();
-        setTransactions(Array.isArray(data) ? data : []);
-      } catch {
+    let active = true;
+    const loadDashboard = async () => {
+      if (!user) {
         setTransactions([]);
+        setGoals([]);
+        setGoalContributions({});
+        setDataLoading(false);
+        return;
+      }
+      setDataLoading(true);
+      try {
+        const [txRes, goalsRes, contribRes] = await Promise.all([
+          apiRequest("/transactions"),
+          apiRequest("/goals"),
+          apiRequest("/goals/contributions"),
+        ]);
+        if (!txRes.ok || !goalsRes.ok || !contribRes.ok) {
+          throw new Error("Unable to load dashboard data");
+        }
+        const [txData, goalsData, contribData] = await Promise.all([
+          txRes.json(), goalsRes.json(), contribRes.json(),
+        ]);
+        if (!active) return;
+        setTransactions(Array.isArray(txData) ? txData : []);
+        setGoals(Array.isArray(goalsData) ? goalsData : []);
+        const contributionMap = {};
+        (Array.isArray(contribData) ? contribData : []).forEach((item) => {
+          const goalId = item.goal?._id || item.goal;
+          contributionMap[goalId] = (contributionMap[goalId] || 0) + Number(item.amount || 0);
+        });
+        setGoalContributions(contributionMap);
+      } catch {
+        if (active) {
+          setTransactions([]);
+          setGoals([]);
+          setGoalContributions({});
+          setToast({ type: "error", message: "Could not load your data. Please refresh or sign in again." });
+        }
+      } finally {
+        if (active) setDataLoading(false);
       }
     };
-    loadTransactions();
+    loadDashboard();
+    return () => { active = false; };
   }, [user]);
 
   const normalizedTransactions = useMemo(
@@ -645,6 +686,7 @@ function App() {
         if (res.ok) {
           const updated = await res.json();
           setGoals((prev) => prev.map((g) => (g._id === editingGoalId ? updated : g)));
+          notify("Goal updated.");
         }
       } else {
         const res = await apiRequest("/goals", {
@@ -654,10 +696,12 @@ function App() {
         if (res.ok) {
           const created = await res.json();
           setGoals((prev) => [created, ...prev]);
+          notify("Goal created.");
         }
       }
     } catch {
-      // silently fail
+      notify("Could not save this goal. Please try again.", "error");
+      return;
     }
 
     resetGoalForm();
@@ -667,8 +711,13 @@ function App() {
   const handleRemoveGoal = async (goalId) => {
     setGoals((prev) => prev.filter((g) => g._id !== goalId));
     try {
-      await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
-    } catch { /* ignore */ }
+      const response = await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Delete failed");
+      notify("Goal deleted.");
+    } catch {
+      notify("Could not delete this goal.", "error");
+      loadGoals();
+    }
   };
 
   const handleEditGoal = (goal) => {
@@ -1012,13 +1061,10 @@ function App() {
       if (!response.ok) throw new Error("Failed");
       const saved = await response.json();
       setTransactions((prev) => [saved, ...prev]);
+      notify("Transaction saved successfully.");
     } catch {
-      const signedAmount = formState.type === "expense" ? -parsedAmount : parsedAmount;
-      setTransactions((prev) => [
-        { id: Date.now(), title: payload.title, category: payload.category, date: payload.date, amount: signedAmount },
-        ...prev,
-      ]);
-      setFormFeedback("Saved locally. We will sync when the connection is available.");
+      notify("Transaction could not be saved. Check your connection and try again.", "error");
+      return;
     } finally {
       setFormSubmitting(false);
     }
@@ -1045,11 +1091,14 @@ function App() {
     setMobileView("home");
     setShowForm(false);
     try {
-      await apiRequest(`/goals/${selectedGoalId}/contributions`, {
+      const response = await apiRequest(`/goals/${selectedGoalId}/contributions`, {
         method: "POST",
         body: JSON.stringify({ amount }),
       });
+      if (!response.ok) throw new Error("Contribution failed");
+      notify("Goal contribution added.");
     } catch {
+      notify("Could not add the contribution.", "error");
       loadGoals();
     }
   };
@@ -1071,6 +1120,8 @@ if (authLoading) {
 
   return (
     <div className="app dashboard-app" data-mobile-view={mobileView}>
+      {toast && <div className={`app-toast ${toast.type}`} role="status" aria-live="polite"><span>{toast.type === "error" ? "!" : "✓"}</span>{toast.message}<button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
+      {dataLoading && isAuthenticated && <div className="data-loading-overlay" role="status" aria-live="polite"><span className="data-loading-spinner" /><strong>Getting your finances ready</strong><small>Loading transactions, goals and insights…</small></div>}
       {showAuthModal && (
         <AuthModal
           mode={authModalMode}
