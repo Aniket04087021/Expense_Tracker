@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import "./gsap-animations.css";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./mobile-fixes.css";
