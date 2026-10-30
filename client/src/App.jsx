@@ -8,7 +8,12 @@ import "./App.css";
 const logo = "/logo expense.png";
 
 const categoryPalette = {
-  Food: "#ff8a5b",
+  Food: "#f59e0b",
+  Groceries: "#84cc16",
+  Medicine: "#f43f5e",
+  Salary: "#10b981",
+  Utilities: "#fbbf24",
+  Rent: "#6366f1",
   Transport: "#f5c76b",
   Lifestyle: "#7dd3fc",
   Bills: "#a78bfa",
@@ -386,7 +391,7 @@ function App() {
     const dateOffset = (daysAgo) => {
       const d = new Date(now);
       d.setDate(d.getDate() - daysAgo);
-      return d.toISOString().slice(0, 10);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
     const sampleTransactions = [
       { _id: "demo-tx-01", title: "Monthly salary", category: "Salary", amount: 65000, type: "income", date: dateOffset(1) },
@@ -891,6 +896,7 @@ function App() {
       await apiRequest("/auth/logout", { method: "POST" });
     } finally {
       localStorage.removeItem("token");
+      setDemoSnapshot(null);
       setUser(null);
     }
   };
