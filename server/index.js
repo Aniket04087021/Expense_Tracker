@@ -235,9 +235,7 @@ app.post("/api/auth/register", authRateLimit, async (req, res) => {
     const token = signToken(user);
     setAuthCookie(res, token);
 
-    // ── Return token in body so mobile clients can store it in localStorage ──
     return res.status(201).json({
-      token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
@@ -264,9 +262,7 @@ app.post("/api/auth/login", authRateLimit, async (req, res) => {
     const token = signToken(user);
     setAuthCookie(res, token);
 
-    // ── Return token in body so mobile clients can store it in localStorage ──
     return res.json({
-      token,
       user: { _id: user._id, name: user.name, email: user.email, provider: user.provider },
     });
   } catch (error) {
