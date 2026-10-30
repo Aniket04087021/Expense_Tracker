@@ -1793,7 +1793,7 @@ if (authLoading) {
                       </label>
                       <div className="entry-field category-field">
                         <span id="entry-category-label">Category</span>
-                        <div className="category-picker">
+                        <div className="category-picker" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setCategoryMenuOpen(false); }} onKeyDown={(event) => { if (event.key === "Escape") setCategoryMenuOpen(false); }}>
                           <button
                             type="button"
                             className={`category-picker-trigger${categoryMenuOpen ? " open" : ""}`}
