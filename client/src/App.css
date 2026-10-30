@@ -5606,3 +5606,73 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(5, 150, 105,
   .dashboard-app .profile-popover { width: min(340px, calc(100vw - 20px)) !important; }
   .dashboard-app .profile-action-copy small { font-size: .6rem; }
 }
+
+
+/* Money Story share card — bright, premium light-fintech palette. */
+.story-card {
+  border: 1px solid #dce9e4;
+  border-radius: 20px;
+  background: #f8fffc;
+  box-shadow: 0 12px 28px rgba(15, 63, 48, .09);
+}
+.story-card-bg {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(167,243,208,.36), transparent 48%),
+    linear-gradient(145deg, #ffffff 0%, #f2fbf7 58%, #eaf8f1 100%) !important;
+}
+.story-card-inner { color: #0f172a; }
+.story-card-header {
+  border-bottom: 1px solid #dcebe4;
+}
+.story-logo-wrap {
+  background: #e7f7ef;
+  border: 1px solid #d0eee0;
+}
+.story-brand { color: #0f172a !important; }
+.story-period-label { color: #64748b !important; }
+.story-metric {
+  background: rgba(255,255,255,.92) !important;
+  border: 1px solid #e1eee8 !important;
+  box-shadow: 0 2px 7px rgba(15,63,48,.035);
+}
+.story-metric-label { color: #718096 !important; }
+.story-metric-val { color: #172b25 !important; }
+.story-metric-icon {
+  background: #eaf7f0 !important;
+  color: #047857 !important;
+  border: 1px solid #d6eee2;
+}
+.story-metric-income .story-metric-icon { background: #e8f8ef !important; color: #15803d !important; }
+.story-metric-spent .story-metric-icon { background: #fff1f2 !important; color: #e11d48 !important; border-color: #ffe0e6; }
+.story-metric-saved .story-metric-icon { background: #eff6ff !important; color: #2563eb !important; border-color: #dbeafe; }
+.story-metric-invest .story-metric-icon { background: #f5f3ff !important; color: #7c3aed !important; border-color: #ede9fe; }
+.story-stat-chip {
+  color: #475569 !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+.story-stat-chip span { color: #64748b !important; }
+.story-stat-chip strong { color: #334155 !important; }
+.story-card-savebar {
+  background: #dceee5 !important;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.story-card-savebar-fill {
+  border-radius: 999px;
+  box-shadow: none !important;
+}
+.story-footer {
+  color: #64748b !important;
+}
+@media (max-width: 768px) {
+  .dashboard-app .money-story-panel .story-card {
+    border: 1px solid #dce9e4;
+    box-shadow: 0 8px 20px rgba(15,63,48,.07);
+  }
+  .dashboard-app .money-story-panel .story-card-inner { padding: 14px; }
+  .dashboard-app .money-story-panel .story-metric {
+    background: rgba(255,255,255,.96) !important;
+    border-color: #e1eee8 !important;
+  }
+}
