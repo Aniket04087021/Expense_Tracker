@@ -176,6 +176,15 @@ app.use(
     credentials: true,
   }),
 );
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    const origin = req.get("origin");
+    if (origin && !CLIENT_URLS.includes(origin)) {
+      return res.status(403).json({ error: "Request origin is not allowed." });
+    }
+  }
+  next();
+});
 app.disable("x-powered-by");
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -434,7 +443,7 @@ app.post("/api/goals/:goalId/contributions", requireAuth, async (req, res) => {
   try {
     const { amount, note } = req.body || {};
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Amount must be a positive number" });
     }
     const goal = await Goal.findOne({ _id: req.params.goalId, user: req.user._id });
