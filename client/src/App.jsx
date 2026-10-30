@@ -927,13 +927,28 @@ function App() {
   };
 
   const handleInstallApp = async () => {
-    if (isAppInstalled || !deferredInstallPrompt) return;
+    if (isAppInstalled || installingPwa) return;
+    if (!deferredInstallPrompt) {
+      notify(
+        /iphone|ipad|ipod/i.test(navigator.userAgent)
+          ? "To install: tap Share in Safari, then choose Add to Home Screen."
+          : "To install: open your browser menu and choose Install app or Add to Home Screen.",
+        "info"
+      );
+      return;
+    }
     setInstallingPwa(true);
-    deferredInstallPrompt.prompt();
-    const { outcome } = await deferredInstallPrompt.userChoice;
-    setDeferredInstallPrompt(null);
-    setInstallingPwa(false);
-    if (outcome === "accepted") setIsAppInstalled(true);
+    try {
+      await deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === "accepted") {
+        setIsAppInstalled(true);
+        notify("Expnse is ready on your device.");
+      }
+    } finally {
+      setDeferredInstallPrompt(null);
+      setInstallingPwa(false);
+    }
   };
 
   const formatPlainAmount = (value) =>
@@ -1676,7 +1691,7 @@ if (authLoading) {
                         <span className="profile-action-copy"><strong>Export report</strong><small>Download your transactions as PDF</small></span>
                         <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
-                      <button className="profile-menu-action" type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled || !deferredInstallPrompt}>
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled}>
                         <span className="profile-action-icon install"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M10 18h4"/></svg></span>
                         <span className="profile-action-copy"><strong>{isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}</strong><small>{isAppInstalled ? "Ready on your device" : "Add a shortcut to your home screen"}</small></span>
                         <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
