@@ -609,10 +609,11 @@ function App() {
     const income = Array.from({ length: daysInMonth }, () => 0);
     const expense = Array.from({ length: daysInMonth }, () => 0);
     normalizedTransactions.forEach((entry) => {
-      const d = new Date(entry.date);
-      if (Number.isNaN(d.getTime())) return;
-      if (d.getFullYear() === year && d.getMonth() + 1 === month) {
-        const idx = d.getDate() - 1;
+      const dateParts = String(entry.date || "").slice(0, 10).split("-").map(Number);
+      const [entryYear, entryMonth, entryDay] = dateParts;
+      if (!entryYear || !entryMonth || !entryDay) return;
+      if (entryYear === year && entryMonth === month) {
+        const idx = entryDay - 1;
         if (entry.type === "income" && entry.amount > 0) {
           income[idx] += Math.abs(entry.amount);
         } else if (entry.type !== "investment" && entry.amount < 0) {
@@ -2039,9 +2040,9 @@ if (authLoading) {
                   return (
                     <div className="burnv2-wrap">
                       <div className="burnv2-yaxis">
-                        <span className="burnv2-ylab green">{formatCurrency.format(maxDailyMagnitude)}</span>
-                        <span className="burnv2-ylab mid">— 0 —</span>
-                        <span className="burnv2-ylab red">{formatCurrency.format(maxDailyMagnitude)}</span>
+                        <span className="burnv2-ylab green">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1 }).format(maxDailyMagnitude)}</span>
+                        <span className="burnv2-ylab mid">₹0</span>
+                        <span className="burnv2-ylab red">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1 }).format(maxDailyMagnitude)}</span>
                       </div>
 
                       <div className="burnv2-scroll">
@@ -2061,8 +2062,9 @@ if (authLoading) {
                             const incH = maxDailyMagnitude ? Math.max(2, Math.round((inc / maxDailyMagnitude) * BAR_MAX_H)) : 0;
                             const expH = maxDailyMagnitude ? Math.max(2, Math.round((exp / maxDailyMagnitude) * BAR_MAX_H)) : 0;
                             const hasActivity = inc > 0 || exp > 0;
-                            const isToday = new Date().getDate() === i + 1 &&
-                              new Date().toISOString().slice(0,7) === selectedMonth;
+                            const localNow = new Date();
+                            const isToday = localNow.getDate() === i + 1 &&
+                              `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}` === selectedMonth;
                             return (
                               <div className={`burnv2-col${hasActivity ? " active" : ""}${isToday ? " today" : ""}`} key={i}>
                                 <div className="burnv2-tooltip">
