@@ -416,6 +416,7 @@ function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        localStorage.removeItem("token");
         const response = await apiRequest("/auth/me", { method: "GET" });
         if (response.ok) {
           const data = await response.json();
@@ -676,21 +677,19 @@ function App() {
           method: "PUT",
           body: JSON.stringify(payload),
         });
-        if (res.ok) {
-          const updated = await res.json();
-          setGoals((prev) => prev.map((g) => (g._id === editingGoalId ? updated : g)));
-          notify("Goal updated.");
-        }
+        if (!res.ok) throw new Error("Goal update failed");
+        const updated = await res.json();
+        setGoals((prev) => prev.map((g) => (g._id === editingGoalId ? updated : g)));
+        notify("Goal updated.");
       } else {
         const res = await apiRequest("/goals", {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        if (res.ok) {
-          const created = await res.json();
-          setGoals((prev) => [created, ...prev]);
-          notify("Goal created.");
-        }
+        if (!res.ok) throw new Error("Goal creation failed");
+        const created = await res.json();
+        setGoals((prev) => [created, ...prev]);
+        notify("Goal created.");
       }
     } catch {
       notify("Could not save this goal. Please try again.", "error");
@@ -1183,6 +1182,7 @@ if (authLoading) {
               </div>
               <div className="nav-actions">
                 <button className="ghost" onClick={() => openAuth("login")}>Login</button>
+                <button className="ghost install-nav-button" onClick={handleInstallApp} disabled={isAppInstalled || installingPwa}>{isAppInstalled ? "Installed" : "Install app"}</button>
                 <button className="primary" onClick={() => openAuth("signup")}>Get started free</button>
               </div>
             </div>
