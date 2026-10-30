@@ -1121,13 +1121,17 @@ function App() {
   // ── Splash screen: shown while verifying token so landing never flashes ──
 if (authLoading) {
   return (
-    <div className="splash-screen">
-      <div className="splash-inner">
-        <img src={logo} alt="Expnse" className="splash-logo" />
-        <div className="splash-dots">
-          <span /><span /><span />
+    <div className="app-loading-screen" role="status" aria-live="polite" aria-label="Loading Expnse">
+      <div className="app-loading-card">
+        <div className="app-loading-brand">
+          <img src={logo} alt="Expnse" className="app-loading-logo" />
+          <span className="app-loading-brand-copy"><strong>Expnse</strong><small>Personal finance, made clear</small></span>
         </div>
-        <p className="splash-text">Loading your finances…</p>
+        <div className="app-loading-orbit" aria-hidden="true"><span /><span /><span /></div>
+        <h2>Getting things ready</h2>
+        <p>Securely checking your session</p>
+        <div className="app-loading-track" aria-hidden="true"><span /></div>
+        <div className="app-loading-foot"><span className="app-loading-secure-dot" /> Your finances stay private</div>
       </div>
     </div>
   );
@@ -1136,7 +1140,7 @@ if (authLoading) {
   return (
     <div className="app dashboard-app" data-mobile-view={mobileView}>
       {toast && <div className={`app-toast ${toast.type}`} role="status" aria-live="polite"><span>{toast.type === "error" ? "!" : "✓"}</span>{toast.message}<button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
-      {dataLoading && isAuthenticated && <div className="data-loading-overlay" role="status" aria-live="polite"><span className="data-loading-spinner" /><strong>Getting your finances ready</strong><small>Loading transactions, goals and insights…</small></div>}
+      {dataLoading && isAuthenticated && <div className="data-loading-overlay" role="status" aria-live="polite" aria-label="Loading your dashboard"><div className="data-loading-card"><div className="data-loading-card-head"><span className="data-loading-mark"><img src={logo} alt="" /></span><span><strong>Preparing your dashboard</strong><small>Syncing your latest activity</small></span><span className="data-loading-pulse" /></div><div className="data-loading-skeleton"><div className="data-loading-skeleton-row"><i /><i /><i /></div><div className="data-loading-skeleton-chart"><i /><i /><i /><i /><i /><i /><i /></div><div className="data-loading-skeleton-line" /><div className="data-loading-skeleton-line short" /></div><div className="data-loading-progress"><span /></div><small className="data-loading-caption">Loading transactions, goals and contributions…</small></div></div>}
       {showAuthModal && (
         <AuthModal
           mode={authModalMode}
