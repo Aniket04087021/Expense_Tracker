@@ -21,7 +21,7 @@ const CLIENT_URLS = (process.env.CLIENT_URLS || CLIENT_URL)
   .split(",")
   .map((url) => url.trim())
   .filter(Boolean);
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
+const JWT_SECRET = process.env.JWT_SECRET || (IS_PRODUCTION ? "" : "dev_secret_change_me");
 const TOKEN_COOKIE = "token";
 const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const IS_PRODUCTION_LIKE =
@@ -33,6 +33,11 @@ const COOKIE_SAME_SITE =
 const COOKIE_SECURE = process.env.COOKIE_SECURE
   ? process.env.COOKIE_SECURE === "true"
   : IS_PRODUCTION_LIKE;
+
+if (IS_PRODUCTION && (!JWT_SECRET || JWT_SECRET.length < 32)) {
+  console.error("JWT_SECRET must be set to a random value of at least 32 characters in production.");
+  process.exit(1);
+}
 
 if (!MONGODB_URI) {
   console.error("Missing MONGODB_URI in production environment.");
@@ -170,21 +175,48 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (req.path.startsWith("/api")) res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
+app.use(express.json({ limit: "32kb" }));
 app.use(cookieParser());
+
+const authAttempts = new Map();
+const authRateLimit = (req, res, next) => {
+  const key = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const entry = authAttempts.get(key);
+  if (!entry || now - entry.startedAt > 15 * 60 * 1000) {
+    authAttempts.set(key, { startedAt: now, count: 1 });
+    return next();
+  }
+  if (entry.count >= 12) {
+    res.setHeader("Retry-After", "900");
+    return res.status(429).json({ error: "Too many sign-in attempts. Please try again in 15 minutes." });
+  }
+  entry.count += 1;
+  return next();
+};
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", authRateLimit, async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
-    if (!name || !email || !password) {
+    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string" || !name.trim() || !email.trim() || !password) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-    if (password.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    if (name.trim().length > 80 || email.trim().length > 254 || password.length < 8 || password.length > 128 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ error: "Enter a valid name and email. Password must be 8–128 characters." });
     }
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await User.findOne({ email: normalizedEmail });
@@ -214,10 +246,10 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", authRateLimit, async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    if (!email || !password) {
+    if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password || email.length > 254 || password.length > 128) {
       return res.status(400).json({ error: "Missing email or password" });
     }
     const normalizedEmail = email.toLowerCase().trim();
@@ -264,7 +296,7 @@ app.get("/api/transactions", requireAuth, async (req, res) => {
 app.post("/api/transactions", requireAuth, async (req, res) => {
   try {
     const { title, category, amount, type, date } = req.body || {};
-    if (!title || !category || !amount || !type || !date) {
+    if (typeof title !== "string" || typeof category !== "string" || !title.trim() || !category.trim() || title.trim().length > 120 || category.trim().length > 50 || amount === undefined || !type || !date) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -287,7 +319,7 @@ app.post("/api/transactions", requireAuth, async (req, res) => {
     const created = await Transaction.create({
       user: req.user._id,
       title: title.trim(),
-      category,
+      category: category.trim(),
       date: dateObj,
       amount: signedAmount,
       type,
