@@ -6236,3 +6236,8 @@ img, svg, canvas, video, iframe { max-width: 100%; }
 /* Keep the document viewport from ever gaining a horizontal scroll track. */
 html, body { overflow-x: hidden !important; }
 .app-toast.info > span { background: #e0f2fe; color: #0369a1; }
+
+.install-nav-button { white-space: nowrap; }
+@media (max-width: 768px) {
+  .install-nav-button { display: inline-flex !important; }
+}
