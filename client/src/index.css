@@ -1,7 +1,7 @@
 ﻿:root {
-  font-family: "Space Grotesk", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  color: #1b1b1b;
-  background: #0c0e12;
+  font-family: "Inter", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
   line-height: 1.4;
   font-weight: 400;
   text-rendering: optimizeLegibility;
@@ -15,7 +15,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(1200px 800px at 10% 10%, #1b2233 0%, #0c0e12 55%, #07080a 100%);
+  background: #f8fafc;
 }
 
 #root {

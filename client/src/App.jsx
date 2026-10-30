@@ -42,7 +42,6 @@ const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? "/api" : "https://expense-tracker-1-vb9x.onrender.com/api");
 const TRANSACTIONS_URL = `${API_BASE}/transactions`;
-const GOALS_URL = `${API_BASE}/goals`;
 
 const landingFeatures = [
   {
@@ -249,10 +248,13 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState("login");
   const [showNavMenu, setShowNavMenu] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [mobileView, setMobileView] = useState("home");
+  const [formFeedback, setFormFeedback] = useState("");
+  const [formSubmitting, setFormSubmitting] = useState(false);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [installingPwa, setInstallingPwa] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
@@ -292,6 +294,24 @@ function App() {
 
   const isAuthenticated = Boolean(user);
 
+  const profileMenuRef = useRef(null);
+  const profileInitials = (user?.name || user?.email || "U")
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const openMobileView = (view) => {
+    setMobileView(view);
+    if (view === "add") {
+      setShowForm(true);
+    } else {
+      setShowForm(false);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const openAuth = (mode) => {
     setAuthModalMode(mode);
     setShowAuthModal(true);
@@ -325,7 +345,6 @@ function App() {
 
   useEffect(() => {
     const initAuth = async () => {
-      setAuthLoading(true);
       try {
         const response = await apiRequest("/auth/me", { method: "GET" });
         if (response.ok) {
@@ -336,8 +355,6 @@ function App() {
         }
       } catch {
         setUser(null);
-      } finally {
-        setAuthLoading(false);
       }
     };
     initAuth();
@@ -367,6 +384,22 @@ function App() {
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
+
+  useEffect(() => {
+    if (!showProfileMenu) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!profileMenuRef.current?.contains(event.target)) setShowProfileMenu(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setShowProfileMenu(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [showProfileMenu]);
 
   useEffect(() => {
     const detectInstalled = () => {
@@ -681,7 +714,7 @@ function App() {
         mostExpensiveMonth:MN[maxSM], bestSaveMonth:MN[bestSM] };
     }
     return null;
-  }, [storyPeriod, normalizedTransactions, selectedMonth, monthLabel]); // eslint-disable-line
+  }, [storyPeriod, normalizedTransactions, selectedMonth, monthLabel]);
 
   const filteredTransactions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -884,9 +917,16 @@ function App() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!formState.title.trim() || !formState.amount) return;
+    setFormFeedback("");
+    if (!formState.title.trim() || !formState.amount) {
+      setFormFeedback("Title and amount are required.");
+      return;
+    }
     const parsedAmount = Number(formState.amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) return;
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      setFormFeedback("Enter an amount greater than zero.");
+      return;
+    }
     const payload = {
       title: formState.title.trim(),
       category: formState.category,
@@ -895,6 +935,7 @@ function App() {
       date: formState.date,
     };
     try {
+      setFormSubmitting(true);
       const response = await fetch(TRANSACTIONS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -910,11 +951,16 @@ function App() {
         { id: Date.now(), title: payload.title, category: payload.category, date: payload.date, amount: signedAmount },
         ...prev,
       ]);
+      setFormFeedback("Saved locally. We will sync when the connection is available.");
+    } finally {
+      setFormSubmitting(false);
     }
     setFormState((prev) => ({ ...prev, title: "", amount: "", type: "expense", date: defaultDate }));
     setGoalContribMode(false);
     setSelectedGoalId("");
     setGoalContribAmount("");
+    setFormFeedback("");
+    setMobileView("home");
     setShowForm(false);
   };
 
@@ -930,6 +976,7 @@ function App() {
     setGoalContribMode(false);
     setSelectedGoalId("");
     setGoalContribAmount("");
+    setMobileView("home");
     setShowForm(false);
     try {
       await apiRequest(`/goals/${selectedGoalId}/contributions`, {
@@ -943,7 +990,7 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className="app dashboard-app" data-mobile-view={mobileView}>
       {showAuthModal && (
         <AuthModal
           mode={authModalMode}
@@ -1455,32 +1502,69 @@ function App() {
         </>
       ) : (
         <>
-          <header className="top-bar">
-            <div>
+          <header className={`top-bar ${showProfileMenu ? "profile-menu-open" : ""}`} id="dashboard-overview">
+            <div className="top-bar-heading">
               <img src={logo} alt="Expnse Logo" className="top-logo" />
               <h1>Welcome{user?.name ? `, ${user.name}` : ""}.</h1>
             </div>
-            <div className="top-actions">
-              <button className="ghost" onClick={handleLogout}>Logout</button>
-              <button className="ghost" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled}>
-                {isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}
+            <div className="profile-menu" ref={profileMenuRef}>
+              <button
+                className="profile-trigger"
+                type="button"
+                aria-label="Open profile menu"
+                aria-haspopup="menu"
+                aria-expanded={showProfileMenu}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowProfileMenu((open) => !open);
+                }}
+              >
+                {profileInitials}
               </button>
-              <button className="ghost export-btn" onClick={handleExport}>
-                📄 Export PDF
-              </button>
-              <button className="primary" onClick={() => setShowForm(true)}>+ Add expense</button>
+              {showProfileMenu && (
+                <div
+                  className="profile-popover"
+                  role="menu"
+                  aria-label="Profile and application tools"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                    <div className="profile-summary">
+                      <span className="profile-avatar-large" aria-hidden="true">{profileInitials}</span>
+                      <div>
+                        <strong>{user?.name || "Account"}</strong>
+                        <span>{user?.email || ""}</span>
+                      </div>
+                    </div>
+                    <div className="profile-menu-section" aria-label="Application tools">
+                      <button type="button" role="menuitem" onClick={() => { openMobileView("add"); setShowProfileMenu(false); }}>
+                        <span aria-hidden="true">＋</span> Add transaction
+                      </button>
+                      <button type="button" role="menuitem" onClick={() => { handleExport(); setShowProfileMenu(false); }} disabled={!normalizedTransactions.length}>
+                        <span aria-hidden="true">↓</span> Export PDF
+                      </button>
+                      <button type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled || !deferredInstallPrompt}>
+                        <span aria-hidden="true">↗</span> {isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}
+                      </button>
+                    </div>
+                    <div className="profile-menu-divider" />
+                    <button className="profile-logout" type="button" role="menuitem" onClick={() => { handleLogout(); setShowProfileMenu(false); }}>
+                      <span aria-hidden="true">↪</span> Log out
+                    </button>
+                </div>
+              )}
             </div>
           </header>
 
           {showForm && (
-            <section className="content-grid">
+            <section className="content-grid dashboard-mobile-section dashboard-mobile-add">
               <article className="panel">
                 <div className="panel-header">
                   <div>
                     <h3>Add expense</h3>
                     <p className="muted">Log income, spending, or allocate to a goal</p>
                   </div>
-                  <button className="ghost small" onClick={() => { setShowForm(false); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
+                  <button className="ghost small" onClick={() => { setShowForm(false); setMobileView("home"); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
                 </div>
 
                 {/* Mode toggle: regular or goal */}
@@ -1524,7 +1608,7 @@ function App() {
                     </label>
                     <label>
                       Amount
-                      <input type="number" name="amount" min="0" step="0.01" placeholder="0.00"
+                      <input type="number" inputMode="decimal" name="amount" min="0" step="0.01" placeholder="0.00"
                         value={formState.amount} onChange={handleChange} />
                     </label>
                     <label>
@@ -1543,7 +1627,10 @@ function App() {
                       Date
                       <input type="date" name="date" value={formState.date} onChange={handleChange} />
                     </label>
-                    <button className="primary form-submit" type="submit">Save entry</button>
+                    {formFeedback && <p className="form-feedback" role="status">{formFeedback}</p>}
+                    <button className="primary form-submit" type="submit" disabled={formSubmitting}>
+                      {formSubmitting ? "Saving..." : "Save entry"}
+                    </button>
                   </form>
                 ) : (
                   <form className="expense-form" onSubmit={handleGoalContribSubmit}>
@@ -1610,7 +1697,7 @@ function App() {
             </section>
           )}
 
-          <section className="summary-grid">
+          <section className="summary-grid dashboard-mobile-section dashboard-mobile-home" aria-label="Financial summary">
             <article className="summary-card">
               <div>
                 <p className="card-label">Total balance</p>
@@ -1659,7 +1746,7 @@ function App() {
             </article>
           </section>
 
-          <section className="content-grid">
+          <section className="content-grid dashboard-mobile-section dashboard-mobile-analytics" id="analytics-section">
             <article className="panel panel-chart burn-panel">
               {/* header */}
               <div className="burn-panel-header">
@@ -1711,9 +1798,6 @@ function App() {
                 (() => {
                   const days = dailySeries.daysInMonth;
                   const BAR_MAX_H = 100;
-                  const totalInc = dailySeries.income.reduce((a,b)=>a+b,0);
-                  const totalExp = dailySeries.expense.reduce((a,b)=>a+b,0);
-                  const savingsRate = totalInc > 0 ? Math.round(((totalInc - totalExp) / totalInc) * 100) : 0;
                   return (
                     <div className="burnv2-wrap">
                       {/* y-axis */}
@@ -1847,7 +1931,7 @@ function App() {
             </article>
           </section>
 
-          <section className="content-grid">
+          <section className="content-grid dashboard-mobile-section dashboard-mobile-transactions" id="transactions-section">
             <article className="panel wide">
               <div className="panel-header">
                 <div>
@@ -2034,7 +2118,7 @@ function App() {
           {/* ══════════════════════════════════════════
               MONEY STORY SECTION
           ══════════════════════════════════════════ */}
-          <section className="content-grid">
+          <section className="content-grid dashboard-mobile-section dashboard-mobile-analytics">
             <article className="panel money-story-panel wide">
 
               {/* ── Header ── */}
@@ -2310,6 +2394,24 @@ function App() {
 
             </article>
           </section>
+          <nav className="dashboard-bottom-nav" aria-label="Dashboard navigation">
+            <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")}>
+              <span aria-hidden="true">⌂</span>
+              <small>Home</small>
+            </button>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "transactions" ? "active" : ""}`} onClick={() => openMobileView("transactions")}>
+              <span aria-hidden="true">≡</span>
+              <small>Transactions</small>
+            </button>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "analytics" ? "active" : ""}`} onClick={() => openMobileView("analytics")}>
+              <span aria-hidden="true">◔</span>
+              <small>Analytics</small>
+            </button>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "add" ? "active" : ""}`} onClick={() => openMobileView("add")}>
+              <span aria-hidden="true">＋</span>
+              <small>Add</small>
+            </button>
+          </nav>
         </>
       )}
     </div>
