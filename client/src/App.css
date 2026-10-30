@@ -6485,3 +6485,193 @@ html, body { overflow-x: hidden !important; }
   .landing-nav .nav-actions { grid-template-columns: 1fr; }
   .landing-nav .nav-actions .primary { grid-column: auto; }
 }
+
+
+/* Branded, calm loading states for session verification and dashboard hydration. */
+.app-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(16,185,129,.10), transparent 42%),
+    #f7faf9;
+}
+.app-loading-card {
+  width: min(100%, 390px);
+  padding: 30px 28px 22px;
+  border: 1px solid #e2ece7;
+  border-radius: 26px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 24px 70px rgba(15, 70, 52, .10), 0 3px 12px rgba(15,23,42,.035);
+  text-align: center;
+}
+.app-loading-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+}
+.app-loading-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+.app-loading-brand-copy { display: grid; gap: 2px; text-align: left; }
+.app-loading-brand-copy strong { color: #102a23; font-size: 1.05rem; letter-spacing: -.025em; }
+.app-loading-brand-copy small { color: #71817a; font-size: .75rem; }
+.app-loading-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: 30px auto 18px;
+  border: 1px solid #d1fae5;
+  border-radius: 50%;
+  background: linear-gradient(145deg,#f0fdf7,#fff);
+}
+.app-loading-orbit::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border: 2px solid transparent;
+  border-top-color: #059669;
+  border-right-color: #34d399;
+  border-radius: 50%;
+  animation: expnse-orbit 1.15s linear infinite;
+}
+.app-loading-orbit span {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #059669;
+}
+.app-loading-orbit span:nth-child(1) { transform: translateY(-17px); }
+.app-loading-orbit span:nth-child(2) { transform: translate(15px,9px); background: #34d399; }
+.app-loading-orbit span:nth-child(3) { transform: translate(-15px,9px); background: #a7f3d0; }
+.app-loading-card h2 { margin: 0; color: #102a23; font-size: 1.2rem; font-weight: 750; letter-spacing: -.035em; }
+.app-loading-card > p { margin: 7px 0 22px; color: #71817a; font-size: .88rem; }
+.app-loading-track, .data-loading-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e8f3ed;
+}
+.app-loading-track span, .data-loading-progress span {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg,#059669,#34d399);
+  animation: expnse-progress 1.55s ease-in-out infinite;
+}
+.app-loading-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 18px;
+  color: #819087;
+  font-size: .73rem;
+}
+.app-loading-secure-dot, .data-loading-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16,185,129,.11);
+}
+.data-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(247,250,249,.78);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+.data-loading-card {
+  width: min(100%, 430px);
+  padding: 21px;
+  border: 1px solid #e0ebe5;
+  border-radius: 23px;
+  background: #fff;
+  box-shadow: 0 22px 65px rgba(15,70,52,.13);
+}
+.data-loading-card-head { display: flex; align-items: center; gap: 11px; }
+.data-loading-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border: 1px solid #d1fae5;
+  border-radius: 13px;
+  background: #f0fdf7;
+}
+.data-loading-mark img { width: 29px; height: 29px; object-fit: contain; }
+.data-loading-card-head > span:nth-child(2) { display: grid; gap: 3px; text-align: left; }
+.data-loading-card-head strong { color: #102a23; font-size: .94rem; }
+.data-loading-card-head small, .data-loading-caption { color: #7b8b83; font-size: .76rem; }
+.data-loading-pulse { margin-left: auto; animation: expnse-pulse 1.3s ease-in-out infinite; }
+.data-loading-skeleton { display: grid; gap: 13px; margin: 22px 0 18px; }
+.data-loading-skeleton-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+.data-loading-skeleton-row i {
+  height: 54px;
+  border: 1px solid #edf2ef;
+  border-radius: 12px;
+  background: linear-gradient(100deg,#f1f5f3 20%,#e7f4ed 38%,#f1f5f3 58%);
+  background-size: 220% 100%;
+  animation: expnse-shimmer 1.45s linear infinite;
+}
+.data-loading-skeleton-chart {
+  display: flex;
+  align-items: end;
+  justify-content: space-around;
+  gap: 9px;
+  height: 90px;
+  padding: 12px;
+  border: 1px solid #edf2ef;
+  border-radius: 13px;
+  background: #fbfdfc;
+}
+.data-loading-skeleton-chart i {
+  width: 9%;
+  height: 35%;
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg,#6ee7b7,#a7f3d0);
+  animation: expnse-bars 1.2s ease-in-out infinite alternate;
+}
+.data-loading-skeleton-chart i:nth-child(2n) { height: 68%; animation-delay: .15s; }
+.data-loading-skeleton-chart i:nth-child(3n) { height: 48%; animation-delay: .3s; }
+.data-loading-skeleton-line {
+  height: 10px;
+  border-radius: 99px;
+  background: linear-gradient(100deg,#f1f5f3 20%,#e7f4ed 38%,#f1f5f3 58%);
+  background-size: 220% 100%;
+  animation: expnse-shimmer 1.45s linear infinite;
+}
+.data-loading-skeleton-line.short { width: 62%; }
+.data-loading-progress { margin-bottom: 11px; }
+.data-loading-caption { display: block; text-align: center; }
+@keyframes expnse-orbit { to { transform: rotate(360deg); } }
+@keyframes expnse-progress { 0% { transform: translateX(-120%); } 100% { transform: translateX(280%); } }
+@keyframes expnse-shimmer { to { background-position: -220% 0; } }
+@keyframes expnse-pulse { 50% { opacity: .4; transform: scale(.8); } }
+@keyframes expnse-bars { to { opacity: .55; transform: scaleY(.72); transform-origin: bottom; } }
+@media (max-width: 480px) {
+  .app-loading-card { padding: 25px 21px 20px; border-radius: 22px; }
+  .data-loading-card { padding: 17px; border-radius: 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-loading-orbit::before, .app-loading-track span, .data-loading-progress span,
+  .data-loading-skeleton-row i, .data-loading-skeleton-chart i,
+  .data-loading-skeleton-line, .data-loading-pulse { animation: none !important; }
+}
