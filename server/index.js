@@ -7,6 +7,7 @@ const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const MONGODB_URI =
@@ -192,6 +193,11 @@ const authAttempts = new Map();
 const authRateLimit = (req, res, next) => {
   const key = req.ip || req.socket.remoteAddress || "unknown";
   const now = Date.now();
+  if (authAttempts.size > 5000) {
+    for (const [ip, attempt] of authAttempts) {
+      if (now - attempt.startedAt > 15 * 60 * 1000) authAttempts.delete(ip);
+    }
+  }
   const entry = authAttempts.get(key);
   if (!entry || now - entry.startedAt > 15 * 60 * 1000) {
     authAttempts.set(key, { startedAt: now, count: 1 });
@@ -215,7 +221,7 @@ app.post("/api/auth/register", authRateLimit, async (req, res) => {
     if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string" || !name.trim() || !email.trim() || !password) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-    if (name.trim().length > 80 || email.trim().length > 254 || password.length < 8 || password.length > 128 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim())) {
+    if (name.trim().length > 80 || email.trim().length > 254 || password.length < 8 || password.length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: "Enter a valid name and email. Password must be 8–128 characters." });
     }
     const normalizedEmail = email.toLowerCase().trim();
@@ -297,7 +303,7 @@ app.post("/api/transactions", requireAuth, async (req, res) => {
     }
 
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Amount must be a positive number" });
     }
 
@@ -361,7 +367,7 @@ app.post("/api/goals", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Amount must be a positive number" });
     }
     if (!["monthly", "quarterly", "yearly"].includes(period)) {
@@ -384,7 +390,7 @@ app.put("/api/goals/:id", requireAuth, async (req, res) => {
   try {
     const { name, category, period, amount } = req.body || {};
     const parsedAmount = Number(amount);
-    if (!name || !category || !period || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+    if (typeof name !== "string" || typeof category !== "string" || !name.trim() || name.trim().length > 80 || !category.trim() || category.length > 50 || !period || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ error: "Invalid fields" });
     }
     if (!["monthly", "quarterly", "yearly"].includes(period)) {
