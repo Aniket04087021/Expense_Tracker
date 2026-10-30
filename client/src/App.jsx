@@ -1765,6 +1765,60 @@ if (authLoading) {
             </article>
           </section>
 
+          <section className="home-insights dashboard-mobile-section dashboard-mobile-home" aria-label="Home insights">
+            <article className="panel home-activity-panel">
+              <div className="panel-header">
+                <div>
+                  <h3>Recent transactions</h3>
+                  <p className="muted">A quick look at your latest activity</p>
+                </div>
+                <button type="button" className="text-action" onClick={() => openMobileView("transactions")}>See all <span aria-hidden="true">→</span></button>
+              </div>
+              <div className="home-activity-list">
+                {normalizedTransactions.length === 0 ? (
+                  <div className="home-empty">
+                    <span className="home-empty-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+                    </span>
+                    <strong>No transactions yet</strong>
+                    <p>Add your first entry to see your activity here.</p>
+                    <button type="button" className="primary home-empty-action" onClick={() => openMobileView("add")}>Add transaction</button>
+                  </div>
+                ) : normalizedTransactions.slice(0, 4).map((item) => (
+                  <div className="home-activity-row" key={item._id ?? item.id}>
+                    <span className={`home-activity-icon ${item.type === "income" ? "is-income" : item.type === "investment" ? "is-investment" : "is-expense"}`} aria-hidden="true">
+                      {item.type === "income" ? (
+                        <svg viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>
+                      ) : item.type === "investment" ? (
+                        <svg viewBox="0 0 24 24"><path d="M4 18 10 12l4 3 6-8"/><path d="M15 7h5v5"/></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24"><path d="M12 5v14m-6-6 6 6 6-6"/></svg>
+                      )}
+                    </span>
+                    <div className="home-activity-copy">
+                      <strong>{item.title}</strong>
+                      <span>{item.category} · {formatDate(item.date)}</span>
+                    </div>
+                    <strong className={`home-activity-amount ${item.type === "income" ? "positive" : item.type === "investment" ? "investment" : "negative"}`}>
+                      {item.type === "income" ? "+" : item.type === "investment" ? "" : "−"}{formatCurrency.format(Math.abs(item.amount))}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="panel home-plan-panel">
+              <div className="home-plan-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h17"/><path d="m7 15 4-4 3 2 6-7"/><path d="M16 6h4v4"/></svg>
+              </div>
+              <div className="home-plan-copy">
+                <h3>Your money goals</h3>
+                <p>{goals.length ? `You’re tracking ${goals.length} ${goals.length === 1 ? "goal" : "goals"}. Keep your plans moving forward.` : "Give your money a direction by setting your first spending goal."}</p>
+                <button type="button" className="text-action" onClick={() => openMobileView("transactions")}>{goals.length ? "View goals" : "Explore goals"} <span aria-hidden="true">→</span></button>
+              </div>
+            </article>
+          </section>
+
           <section className="content-grid dashboard-mobile-section dashboard-mobile-analytics" id="analytics-section">
             <article className="panel panel-chart burn-panel">
               <div className="burn-panel-header">
