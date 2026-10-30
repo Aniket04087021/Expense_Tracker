@@ -309,6 +309,7 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [demoSnapshot, setDemoSnapshot] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState("login");
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -370,6 +371,57 @@ function App() {
       setShowForm(false);
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const toggleDemoData = () => {
+    if (demoSnapshot) {
+      setTransactions(demoSnapshot.transactions);
+      setGoals(demoSnapshot.goals);
+      setGoalContributions(demoSnapshot.goalContributions);
+      setDemoSnapshot(null);
+      setShowProfileMenu(false);
+      return;
+    }
+    const now = new Date();
+    const dateOffset = (daysAgo) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - daysAgo);
+      return d.toISOString().slice(0, 10);
+    };
+    const sampleTransactions = [
+      { _id: "demo-tx-01", title: "Monthly salary", category: "Salary", amount: 65000, type: "income", date: dateOffset(1) },
+      { _id: "demo-tx-02", title: "Freelance project", category: "Income", amount: 8500, type: "income", date: dateOffset(5) },
+      { _id: "demo-tx-03", title: "Monthly house rent", category: "Rent", amount: 15000, type: "expense", date: dateOffset(2) },
+      { _id: "demo-tx-04", title: "Weekly groceries", category: "Groceries", amount: 2350, type: "expense", date: dateOffset(0) },
+      { _id: "demo-tx-05", title: "Dinner with friends", category: "Food", amount: 1250, type: "expense", date: dateOffset(3) },
+      { _id: "demo-tx-06", title: "Pharmacy", category: "Medicine", amount: 680, type: "expense", date: dateOffset(4) },
+      { _id: "demo-tx-07", title: "Petrol refill", category: "Transport", amount: 1800, type: "expense", date: dateOffset(6) },
+      { _id: "demo-tx-08", title: "Electricity bill", category: "Utilities", amount: 1450, type: "expense", date: dateOffset(8) },
+      { _id: "demo-tx-09", title: "Monthly SIP", category: "Investment", amount: 5000, type: "investment", date: dateOffset(9) },
+      { _id: "demo-tx-10", title: "Movie and snacks", category: "Lifestyle", amount: 950, type: "expense", date: dateOffset(10) },
+      { _id: "demo-tx-11", title: "Online course", category: "Education", amount: 1999, type: "expense", date: dateOffset(12) },
+      { _id: "demo-tx-12", title: "Cab ride", category: "Transport", amount: 420, type: "expense", date: dateOffset(14) },
+      { _id: "demo-tx-13", title: "Doctor consultation", category: "Health", amount: 700, type: "expense", date: dateOffset(17) },
+      { _id: "demo-tx-14", title: "Weekend trip saving", category: "Investment", amount: 2500, type: "investment", date: dateOffset(19) },
+      { _id: "demo-tx-15", title: "Mobile recharge", category: "Bills", amount: 399, type: "expense", date: dateOffset(22) },
+      { _id: "demo-tx-16", title: "Grocery top-up", category: "Groceries", amount: 860, type: "expense", date: dateOffset(25) },
+    ];
+    const sampleGoals = [
+      { _id: "demo-goal-01", name: "Emergency fund", category: "Other", period: "yearly", amount: 100000 },
+      { _id: "demo-goal-02", name: "Monthly groceries", category: "Groceries", period: "monthly", amount: 6000 },
+      { _id: "demo-goal-03", name: "Weekend getaway", category: "Travel", period: "quarterly", amount: 20000 },
+    ];
+    setDemoSnapshot({ transactions, goals, goalContributions });
+    setTransactions(sampleTransactions);
+    setGoals(sampleGoals);
+    setGoalContributions({ "demo-goal-01": 25000, "demo-goal-02": 1800, "demo-goal-03": 6500 });
+    setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+    setSearchQuery("");
+    setCurrentPage(1);
+    setStoryPeriod("monthly");
+    setMobileView("home");
+    setShowForm(false);
+    setShowProfileMenu(false);
   };
 
   const openAuth = (mode) => {
@@ -632,6 +684,17 @@ function App() {
 
     const payload = { name, category: goalForm.category, period: goalForm.period, amount };
 
+    if (demoSnapshot) {
+      if (editingGoalId) {
+        setGoals((prev) => prev.map((goal) => goal._id === editingGoalId ? { ...goal, ...payload } : goal));
+      } else {
+        setGoals((prev) => [{ _id: `demo-goal-${Date.now()}`, ...payload }, ...prev]);
+      }
+      resetGoalForm();
+      setShowGoalForm(false);
+      return;
+    }
+
     try {
       if (editingGoalId) {
         const res = await apiRequest(`/goals/${editingGoalId}`, {
@@ -662,6 +725,7 @@ function App() {
 
   const handleRemoveGoal = async (goalId) => {
     setGoals((prev) => prev.filter((g) => g._id !== goalId));
+    if (demoSnapshot) return;
     try {
       await apiRequest(`/goals/${goalId}`, { method: "DELETE" });
     } catch { /* ignore */ }
@@ -999,6 +1063,18 @@ function App() {
       type: formState.type,
       date: formState.date,
     };
+    if (demoSnapshot) {
+      const signedAmount = payload.type === "expense" ? -parsedAmount : parsedAmount;
+      setTransactions((prev) => [{ _id: `demo-new-${Date.now()}`, ...payload, amount: signedAmount }, ...prev]);
+      setFormState((prev) => ({ ...prev, title: "", amount: "", type: "expense", date: defaultDate }));
+      setGoalContribMode(false);
+      setSelectedGoalId("");
+      setGoalContribAmount("");
+      setFormFeedback("");
+      setMobileView("home");
+      setShowForm(false);
+      return;
+    }
     try {
       setFormSubmitting(true);
       const response = await apiRequest("/transactions", {
@@ -1040,6 +1116,7 @@ function App() {
     setGoalContribAmount("");
     setMobileView("home");
     setShowForm(false);
+    if (demoSnapshot) return;
     try {
       await apiRequest(`/goals/${selectedGoalId}/contributions`, {
         method: "POST",
@@ -1607,6 +1684,11 @@ if (authLoading) {
                         <span>{user?.email || ""}</span>
                       </div>
                     </div>
+                    <div className="profile-menu-section" aria-label="Demo data">
+                      <button type="button" role="menuitem" onClick={toggleDemoData}>
+                        <span aria-hidden="true">▦</span> {demoSnapshot ? "Exit demo data" : "Load sample data"}
+                      </button>
+                    </div>
                     <div className="profile-menu-section" aria-label="Application tools">
                       <button type="button" role="menuitem" onClick={() => { openMobileView("add"); setShowProfileMenu(false); }}>
                         <span aria-hidden="true">＋</span> Add transaction
@@ -1626,6 +1708,13 @@ if (authLoading) {
               )}
             </div>
           </header>
+
+          {demoSnapshot && (
+            <div className="demo-mode-banner" role="status">
+              <span><strong>Demo mode</strong> · Sample data only. Your real records are safe.</span>
+              <button type="button" onClick={toggleDemoData}>Exit demo</button>
+            </div>
+          )}
 
           {showForm && (
             <section className="content-grid dashboard-mobile-section dashboard-mobile-add">
