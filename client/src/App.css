@@ -7779,3 +7779,49 @@ html, body { overflow-x: hidden !important; }
 @keyframes expnse-spin {
   to { transform: rotate(360deg); }
 }
+
+
+/* Cross-device navigation + focused notifications screen. */
+@media (max-width: 768px) {
+  .dashboard-app { padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important; }
+  .dashboard-app .dashboard-bottom-nav {
+    position: fixed !important;
+    z-index: 1100 !important;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    min-height: 72px;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0,1fr));
+    align-items: center;
+    gap: 2px;
+    padding: 7px 8px !important;
+    border: 1px solid rgba(220,232,226,.95) !important;
+    border-radius: 24px !important;
+    background: rgba(255,255,255,.96) !important;
+    box-shadow: 0 10px 35px rgba(16,42,35,.13) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .dashboard-app .dashboard-nav-item { min-width:0 !important; width:100%; min-height:54px; display:flex !important; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:5px 2px !important; border-radius:16px !important; }
+  .dashboard-app .dashboard-nav-item svg { width:23px !important; height:23px !important; flex:0 0 auto; }
+  .dashboard-app .dashboard-nav-item small { display:block !important; font-size:clamp(9px,2.6vw,11px) !important; line-height:1.1; white-space:nowrap; }
+  .dashboard-app .dashboard-nav-add { transform:none !important; border-radius:16px !important; box-shadow:none !important; }
+  .dashboard-app .dashboard-nav-add.active { background:#eef2ff !important; }
+  .dashboard-app .dashboard-nav-item.active { background:#eef2ff !important; color:#5b5ce9 !important; }
+  .dashboard-app[data-mobile-view="notifications"] .dashboard-mobile-notifications { min-height:calc(100dvh - 150px); padding-top:8px; }
+  .dashboard-app[data-mobile-view="notifications"] .notifications-page { width:min(100%,720px); margin-inline:auto; }
+  .dashboard-app[data-mobile-view="notifications"] .notifications-hero { margin:10px 0 22px; padding:22px; border:1px solid #e6eee9; border-radius:22px; background:linear-gradient(135deg,#f0fdf7,#fff); }
+  .dashboard-app[data-mobile-view="notifications"] .notifications-empty { max-width:560px; margin:0 auto; padding:clamp(24px,6vw,42px) 22px; border:1px dashed #d7e8df; border-radius:22px; background:#fff; text-align:center; }
+}
+@media (max-width: 390px) {
+  .dashboard-app .dashboard-bottom-nav { left:8px; right:8px; padding:6px 5px !important; min-height:66px; border-radius:20px !important; }
+  .dashboard-app .dashboard-nav-item { min-height:50px; }
+  .dashboard-app .dashboard-nav-item svg { width:21px !important; height:21px !important; }
+}
+@media (min-width: 769px) {
+  .dashboard-app .dashboard-bottom-nav { display:none !important; }
+  .dashboard-app .dashboard-mobile-notifications { max-width:980px; margin-inline:auto; }
+  .dashboard-app .notifications-page { width:100%; }
+}
