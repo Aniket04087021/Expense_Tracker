@@ -6798,3 +6798,82 @@ html, body { overflow-x: hidden !important; }
   .dashboard-app .activity-row,
   .dashboard-app .goal-row { transition: none !important; }
 }
+
+
+/* Profile avatar opens a full-height navigation drawer inspired by the reference. */
+.dashboard-app .profile-menu-open::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 11990;
+  background: rgba(13,25,21,.48);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.dashboard-app .profile-menu { position: relative; z-index: 12001; }
+.dashboard-app .profile-popover {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  z-index: 12002 !important;
+  width: min( min(440px, 88vw), 100%) !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow-y: auto !important;
+  border: 0 !important;
+  border-radius: 0 24px 24px 0 !important;
+  padding: 0 0 max(18px, env(safe-area-inset-bottom)) !important;
+  background: #fff !important;
+  box-shadow: 22px 0 70px rgba(8,35,25,.2) !important;
+  animation: expnse-drawer-in .26s cubic-bezier(.2,.75,.25,1) both;
+  overscroll-behavior: contain;
+}
+.dashboard-app .profile-menu-head {
+  position: relative;
+  min-height: 180px;
+  padding: max(28px, env(safe-area-inset-top)) 26px 26px !important;
+  display: flex;
+  align-items: end;
+  color: #fff !important;
+  background: radial-gradient(circle at 90% 0%,rgba(255,255,255,.2),transparent 36%), linear-gradient(135deg,#087f5b 0%,#059669 55%,#34b889 100%) !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+}
+.dashboard-app .profile-menu-head::after {
+  content: "";
+  position: absolute;
+  width: 190px; height: 190px; right: -65px; top: -75px;
+  border: 1px solid rgba(255,255,255,.17); border-radius: 50%;
+  box-shadow: 0 0 0 28px rgba(255,255,255,.045), 0 0 0 58px rgba(255,255,255,.035);
+  pointer-events: none;
+}
+.dashboard-app .profile-summary { position: relative; z-index: 1; gap: 16px !important; }
+.dashboard-app .profile-avatar-large {
+  width: 68px !important; height: 68px !important; flex: 0 0 68px;
+  display: grid; place-items: center; border-radius: 20px !important;
+  border: 1px solid rgba(255,255,255,.45) !important;
+  background: rgba(255,255,255,.15) !important;
+  color: #fff !important; font-size: 1.3rem !important; font-weight: 750;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+}
+.dashboard-app .profile-summary strong { color: #fff !important; font-size: 1.25rem !important; letter-spacing: -.03em; }
+.dashboard-app .profile-summary span:not(.profile-avatar-large) { color: rgba(255,255,255,.78) !important; overflow-wrap: anywhere; }
+.dashboard-app .profile-account-chip { color: #fff !important; background: rgba(255,255,255,.15) !important; border-color: rgba(255,255,255,.22) !important; }
+.dashboard-app .profile-menu-section { padding: 22px 22px 18px !important; }
+.dashboard-app .profile-menu-label { color: #84918b !important; letter-spacing: .12em; font-size: .72rem !important; font-weight: 750; }
+.dashboard-app .profile-menu-action {
+  min-height: 62px !important; margin-top: 6px !important; padding: 12px 13px !important;
+  border-radius: 15px !important; border: 1px solid transparent !important;
+  background: transparent !important; color: #142b23 !important;
+}
+.dashboard-app .profile-menu-action:hover { background: #f0faf5 !important; border-color: #d7f1e4 !important; }
+.dashboard-app .profile-action-icon { border-radius: 12px !important; background: #eefaf4 !important; color: #07845f !important; }
+.dashboard-app .profile-action-copy strong { color: #172d25 !important; font-size: .96rem !important; }
+.dashboard-app .profile-action-copy small { color: #7b8982 !important; }
+.dashboard-app .profile-action-chevron { color: #8a9991 !important; }
+@keyframes expnse-drawer-in { from { transform: translateX(-24px); opacity: .65; } to { transform: translateX(0); opacity: 1; } }
+@media (max-width: 520px) {
+  .dashboard-app .profile-popover { width: min(88vw, 390px) !important; border-radius: 0 20px 20px 0 !important; }
+  .dashboard-app .profile-menu-head { min-height: 168px; padding-inline: 20px !important; }
+  .dashboard-app .profile-menu-section { padding-inline: 15px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .dashboard-app .profile-popover { animation: none !important; } }
