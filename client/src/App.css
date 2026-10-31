@@ -7991,3 +7991,19 @@ html, body { overflow-x: hidden !important; }
 /* Notifications content belongs exclusively to its dedicated navigation view. */
 .dashboard-app .dashboard-mobile-notifications{display:none!important;}
 .dashboard-app[data-mobile-view="notifications"] .dashboard-mobile-notifications{display:block!important;}
+
+
+/* Add action lifts when selected, matching the nav's active feedback without the square tile. */
+@media(max-width:768px){
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add.active,
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add[aria-current="page"]{
+   transform:translateY(-8px)!important;
+   background:#eaf8f0!important;
+   color:#07845f!important;
+   border-radius:14px!important;
+   box-shadow:0 5px 14px rgba(8,132,95,.12)!important;
+   transition:transform .2s ease,background .2s ease,box-shadow .2s ease!important;
+ }
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add:active{transform:translateY(-5px)!important;}
+}
+@media(prefers-reduced-motion:reduce){.dashboard-app .dashboard-bottom-nav .dashboard-nav-add{transition:none!important;}}
