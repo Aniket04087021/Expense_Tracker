@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./mobile-fixes.css";
 import "./App.css";
-const logo = "/logo expense.png";
+const logo = "/icon.svg";
 
 const categoryPalette = {
   Food: "#f59e0b",
@@ -321,6 +321,7 @@ function App() {
   const [authModalMode, setAuthModalMode] = useState("login");
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const [mobileView, setMobileView] = useState("home");
   const [formFeedback, setFormFeedback] = useState("");
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -382,6 +383,7 @@ function App() {
 
   const openMobileView = (view) => {
     setMobileView(view);
+    setShowMobileDrawer(false);
     if (view === "add") {
       setShowForm(true);
     } else {
@@ -1123,15 +1125,9 @@ if (authLoading) {
   return (
     <div className="app-loading-screen" role="status" aria-live="polite" aria-label="Loading Expnse">
       <div className="app-loading-card">
-        <div className="app-loading-brand">
-          <img src={logo} alt="Expnse" className="app-loading-logo" />
-          <span className="app-loading-brand-copy"><strong>Expnse</strong><small>Personal finance, made clear</small></span>
-        </div>
-        <div className="app-loading-orbit" aria-hidden="true"><span /><span /><span /></div>
-        <h2>Getting things ready</h2>
-        <p>Securely checking your session</p>
-        <div className="app-loading-track" aria-hidden="true"><span /></div>
-        <div className="app-loading-foot"><span className="app-loading-secure-dot" /> Your finances stay private</div>
+        <img src={logo} alt="Expnse" className="app-loading-logo" />
+        <div className="app-loading-spinner" aria-hidden="true" />
+        <strong className="app-loading-title">Loading Expnse</strong>
       </div>
     </div>
   );
@@ -1140,7 +1136,7 @@ if (authLoading) {
   return (
     <div className="app dashboard-app" data-mobile-view={mobileView}>
       {toast && <div className={`app-toast ${toast.type}`} role="status" aria-live="polite"><span>{toast.type === "error" ? "!" : "✓"}</span>{toast.message}<button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
-      {dataLoading && isAuthenticated && <div className="data-loading-overlay" role="status" aria-live="polite" aria-label="Loading your dashboard"><div className="data-loading-card"><div className="data-loading-card-head"><span className="data-loading-mark"><img src={logo} alt="" /></span><span><strong>Preparing your dashboard</strong><small>Syncing your latest activity</small></span><span className="data-loading-pulse" /></div><div className="data-loading-skeleton"><div className="data-loading-skeleton-row"><i /><i /><i /></div><div className="data-loading-skeleton-chart"><i /><i /><i /><i /><i /><i /><i /></div><div className="data-loading-skeleton-line" /><div className="data-loading-skeleton-line short" /></div><div className="data-loading-progress"><span /></div><small className="data-loading-caption">Loading transactions, goals and contributions…</small></div></div>}
+      {dataLoading && isAuthenticated && <div className="data-loading-overlay" role="status" aria-live="polite" aria-label="Loading your dashboard"><div className="data-loading-card"><img src={logo} alt="Expnse" className="data-loading-logo" /><div className="data-loading-spinner" aria-hidden="true" /><strong>Loading your dashboard</strong></div></div>}
       {showAuthModal && (
         <AuthModal
           mode={authModalMode}
@@ -1649,10 +1645,33 @@ if (authLoading) {
       ) : (
         <>
           <header className={`top-bar ${showProfileMenu ? "profile-menu-open" : ""}`} id="dashboard-overview">
+            <button
+              type="button"
+              className="mobile-header-button mobile-menu-button"
+              aria-label="Open dashboard menu"
+              aria-haspopup="menu"
+              aria-expanded={showMobileDrawer}
+              onClick={() => setShowMobileDrawer(true)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            </button>
             <div className="top-bar-heading">
               <img src={logo} alt="Expnse Logo" className="top-logo" />
-              <h1>Welcome{user?.name ? `, ${user.name}` : ""}.</h1>
+              <h1>
+                <span className="desktop-header-title">Welcome{user?.name ? `, ${user.name}` : ""}.</span>
+                <span className="mobile-header-title">
+                  {mobileView === "notifications" ? "Notifications" : mobileView === "transactions" ? "Transactions" : mobileView === "analytics" ? "Analytics" : mobileView === "add" ? "Add transaction" : "Overview"}
+                </span>
+              </h1>
             </div>
+            <button
+              type="button"
+              className="mobile-header-button mobile-notification-button"
+              aria-label="Notifications"
+              onClick={() => openMobileView("notifications")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+            </button>
             <div className="profile-menu" ref={profileMenuRef}>
               <button
                 className="profile-trigger"
@@ -1712,6 +1731,33 @@ if (authLoading) {
               )}
             </div>
           </header>
+
+          {showMobileDrawer && (
+            <div className="mobile-drawer-layer" role="presentation" onClick={() => setShowMobileDrawer(false)}>
+              <aside className="mobile-drawer" role="dialog" aria-modal="true" aria-label="App navigation" onClick={(event) => event.stopPropagation()}>
+                <div className="mobile-drawer-head">
+                  <div className="mobile-drawer-brand">
+                    <img src={logo} alt="" />
+                    <strong>Expense<br />Manager</strong>
+                  </div>
+                  <button type="button" className="mobile-drawer-close" aria-label="Close menu" onClick={() => setShowMobileDrawer(false)}>×</button>
+                </div>
+                <div className="mobile-drawer-group">
+                  <span className="mobile-drawer-label">MAIN</span>
+                  <button type="button" onClick={() => openMobileView("home")}><span>⌂</span>Home</button>
+                  <button type="button" onClick={() => openMobileView("transactions")}><span>☷</span>Transactions</button>
+                  <button type="button" onClick={() => openMobileView("analytics")}><span>▥</span>Statistics</button>
+                  <button type="button" onClick={() => openMobileView("notifications")}><span>♧</span>Notifications</button>
+                </div>
+                <div className="mobile-drawer-group">
+                  <span className="mobile-drawer-label">PLANNING</span>
+                  <button type="button" onClick={() => openMobileView("analytics")}><span>◷</span>Budget <b>›</b></button>
+                  <button type="button" onClick={() => openMobileView("add")}><span>▣</span>Add transaction</button>
+                </div>
+                <div className="mobile-drawer-footer">Expnse · Personal finance</div>
+              </aside>
+            </div>
+          )}
 
           {showForm && (
             <section className="content-grid dashboard-mobile-section dashboard-mobile-add">
@@ -2605,7 +2651,29 @@ if (authLoading) {
 
             </article>
           </section>
-          <nav className="dashboard-bottom-nav" aria-label="Dashboard navigation">
+          <section className="dashboard-mobile-section dashboard-mobile-notifications" aria-label="Notifications">
+            <div className="notifications-page">
+              <button type="button" className="notifications-back" onClick={() => openMobileView("home")} aria-label="Back to overview">←</button>
+              <div className="notifications-hero">
+                <div>
+                  <h2>Notifications</h2>
+                  <p>When you get notifications, they’ll show up here</p>
+                </div>
+                <span className="notifications-hero-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></span>
+              </div>
+              <article className="notifications-empty">
+                <div className="notifications-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16" /></svg></div>
+                <h3>No notifications yet</h3>
+                <p>Smart alerts are generated daily based on your spending patterns and budgets.</p>
+                <span className="notifications-clear">✣ &nbsp; All clear! No spending concerns right now 🎉</span>
+              </article>
+            </div>
+          </section>
+          <nav
+            className="dashboard-bottom-nav"
+            aria-label="Dashboard navigation"
+            style={{ "--active-index": mobileView === "transactions" ? 1 : mobileView === "add" ? 2 : mobileView === "analytics" ? 3 : 0 }}
+          >
             <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")} aria-current={mobileView === "home" ? "page" : undefined}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></svg>
               <small>Home</small>
@@ -2614,13 +2682,13 @@ if (authLoading) {
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></svg>
               <small>Transactions</small>
             </button>
+            <button type="button" className={`dashboard-nav-item dashboard-nav-add ${mobileView === "add" ? "active" : ""}`} onClick={() => openMobileView("add")} aria-current={mobileView === "add" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              <small>Add</small>
+            </button>
             <button type="button" className={`dashboard-nav-item ${mobileView === "analytics" ? "active" : ""}`} onClick={() => openMobileView("analytics")} aria-current={mobileView === "analytics" ? "page" : undefined}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>
               <small>Analytics</small>
-            </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "add" ? "active" : ""}`} onClick={() => openMobileView("add")} aria-current={mobileView === "add" ? "page" : undefined}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-              <small>Add</small>
             </button>
           </nav>
         </>
