@@ -6675,3 +6675,126 @@ html, body { overflow-x: hidden !important; }
   .data-loading-skeleton-row i, .data-loading-skeleton-chart i,
   .data-loading-skeleton-line, .data-loading-pulse { animation: none !important; }
 }
+
+
+/* Expnse — refined premium dashboard layer (inspired, not copied). */
+:root {
+  --expnse-ink: #102a23;
+  --expnse-muted: #71817a;
+  --expnse-line: #e5eee9;
+  --expnse-surface: #ffffff;
+  --expnse-wash: #f6faf8;
+  --expnse-green: #059669;
+  --expnse-green-dark: #047857;
+}
+.app.dashboard-app {
+  color: var(--expnse-ink);
+  background: #f7faf8;
+  min-height: 100vh;
+  padding-top: clamp(18px, 2.4vw, 34px);
+}
+.dashboard-app .summary-grid {
+  gap: 16px !important;
+  margin-block: 22px 26px !important;
+}
+.dashboard-app .summary-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  padding: clamp(18px, 2vw, 25px) !important;
+  border: 1px solid var(--expnse-line) !important;
+  border-radius: 22px !important;
+  background: linear-gradient(155deg,#fff 0%,#fcfefd 100%) !important;
+  box-shadow: 0 3px 8px rgba(16,42,35,.025), 0 12px 28px rgba(16,42,35,.035) !important;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease !important;
+}
+.dashboard-app .summary-card:hover {
+  border-color: #b7e4d0 !important;
+  box-shadow: 0 10px 28px rgba(5,150,105,.075) !important;
+  transform: translateY(-2px);
+}
+.dashboard-app .summary-card:first-child {
+  background: linear-gradient(135deg,#ecfdf5 0%,#ffffff 72%) !important;
+  border-color: #ccefe0 !important;
+}
+.dashboard-app .summary-card h2,
+.dashboard-app .summary-card h3,
+.dashboard-app .summary-card strong { letter-spacing: -.035em; }
+.dashboard-app .summary-card .summary-detail,
+.dashboard-app .summary-card small { color: var(--expnse-muted); }
+.dashboard-app .content-grid {
+  align-items: start;
+  gap: 20px !important;
+}
+.dashboard-app .panel {
+  border: 1px solid var(--expnse-line) !important;
+  border-radius: 22px !important;
+  background: var(--expnse-surface) !important;
+  box-shadow: 0 4px 12px rgba(16,42,35,.025), 0 14px 34px rgba(16,42,35,.035) !important;
+}
+.dashboard-app .panel h2,
+.dashboard-app .panel h3 { color: var(--expnse-ink); letter-spacing: -.03em; }
+.dashboard-app .panel input,
+.dashboard-app .panel select,
+.dashboard-app .panel textarea,
+.dashboard-app .expense-form input,
+.dashboard-app .expense-form select {
+  border-color: #dce8e2 !important;
+  border-radius: 12px !important;
+  background: #fbfdfc !important;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease !important;
+}
+.dashboard-app input:focus,
+.dashboard-app select:focus,
+.dashboard-app textarea:focus {
+  border-color: #34b889 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 4px rgba(16,185,129,.11) !important;
+  outline: none !important;
+}
+.dashboard-app button.primary,
+.dashboard-app .primary {
+  background: linear-gradient(135deg,#059669,#047857) !important;
+  border: 1px solid #047857 !important;
+  box-shadow: 0 6px 16px rgba(5,150,105,.17) !important;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease !important;
+}
+.dashboard-app button.primary:hover,
+.dashboard-app .primary:hover {
+  filter: saturate(1.06);
+  box-shadow: 0 9px 22px rgba(5,150,105,.23) !important;
+  transform: translateY(-1px);
+}
+.dashboard-app .transaction-row,
+.dashboard-app .activity-row,
+.dashboard-app .goal-row {
+  border-color: #edf2ef !important;
+  transition: background .16s ease !important;
+}
+.dashboard-app .transaction-row:hover,
+.dashboard-app .activity-row:hover,
+.dashboard-app .goal-row:hover { background: #f7fbf9 !important; }
+.dashboard-app .category-icon {
+  border-radius: 13px !important;
+}
+.dashboard-app .landing-nav {
+  box-shadow: 0 8px 28px rgba(16,42,35,.055) !important;
+}
+@media (max-width: 768px) {
+  .app.dashboard-app {
+    padding-top: 12px;
+    background: #f8fbf9;
+  }
+  .dashboard-app .summary-grid { gap: 10px !important; margin-block: 16px 20px !important; }
+  .dashboard-app .summary-card { padding: 15px !important; border-radius: 17px !important; }
+  .dashboard-app .content-grid { gap: 14px !important; }
+  .dashboard-app .panel { border-radius: 18px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-app .summary-card,
+  .dashboard-app button.primary,
+  .dashboard-app .primary,
+  .dashboard-app .transaction-row,
+  .dashboard-app .activity-row,
+  .dashboard-app .goal-row { transition: none !important; }
+}
