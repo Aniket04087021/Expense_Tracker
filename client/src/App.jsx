@@ -311,7 +311,9 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
 }
 
 function App() {
-  const [transactions, setTransactions] = useState([]);\n  const [notifications, setNotifications] = useState([]);\n  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
