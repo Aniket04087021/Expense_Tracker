@@ -7986,3 +7986,8 @@ html, body { overflow-x: hidden !important; }
    background:#eaf8f0!important;color:#07845f!important;
  }
 }
+
+
+/* Notifications content belongs exclusively to its dedicated navigation view. */
+.dashboard-app .dashboard-mobile-notifications{display:none!important;}
+.dashboard-app[data-mobile-view="notifications"] .dashboard-mobile-notifications{display:block!important;}
