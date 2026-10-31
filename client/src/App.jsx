@@ -311,7 +311,7 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
 }
 
 function App() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState([]);\n  const [notifications, setNotifications] = useState([]);\n  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -421,6 +421,35 @@ function App() {
       setGoals([]);
       setGoalContributions({});
     }
+  };
+
+  const loadNotifications = async () => {
+    if (!user) { setNotifications([]); return; }
+    setNotificationsLoading(true);
+    try {
+      const response = await apiRequest("/notifications");
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(Array.isArray(data) ? data : []);
+      }
+    } catch { /* keep last loaded notifications */ }
+    finally { setNotificationsLoading(false); }
+  };
+
+  useEffect(() => { if (user) loadNotifications(); else setNotifications([]); }, [user]);
+
+  const markNotificationRead = async (id) => {
+    try {
+      const response = await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
+      if (response.ok) setNotifications((items) => items.map((item) => item._id === id ? { ...item, read: true } : item));
+    } catch { notify("Could not update notification.", "error"); }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      const response = await apiRequest("/notifications/read-all", { method: "PATCH" });
+      if (response.ok) setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+    } catch { notify("Could not update notifications.", "error"); }
   };
 
   // ── On mount: verify token with /auth/me ──
@@ -2661,12 +2690,12 @@ if (authLoading) {
                 </div>
                 <span className="notifications-hero-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></span>
               </div>
-              <article className="notifications-empty">
-                <div className="notifications-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16" /></svg></div>
-                <h3>No notifications yet</h3>
-                <p>Smart alerts are generated daily based on your spending patterns and budgets.</p>
-                <span className="notifications-clear">✣ &nbsp; All clear! No spending concerns right now 🎉</span>
-              </article>
+              <div className="notifications-list-wrap">
+                <div className="notifications-list-heading"><h3>Activity</h3>{notifications.some((item) => !item.read) && <button type="button" onClick={markAllNotificationsRead}>Mark all read</button>}</div>
+                {notificationsLoading ? <article className="notifications-empty"><p>Loading your notifications…</p></article> : notifications.length === 0 ? (
+                  <article className="notifications-empty"><div className="notifications-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16" /></svg></div><h3>You're all caught up</h3><p>Account and transaction activity will appear here.</p></article>
+                ) : <div className="notifications-list">{notifications.map((item) => <article className={`notification-item ${item.read ? "read" : "unread"}`} key={item._id}><span className="notification-item-icon" aria-hidden="true">✦</span><div className="notification-item-copy"><strong>{item.title}</strong><p>{item.message}</p><time>{new Date(item.createdAt).toLocaleString()}</time></div>{!item.read && <button type="button" onClick={() => markNotificationRead(item._id)} aria-label="Mark notification as read">Mark read</button>}</article>)}</div>}
+              </div>
             </div>
           </section>
           <nav
