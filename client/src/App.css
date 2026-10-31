@@ -6998,3 +6998,17 @@ html, body { overflow-x: hidden !important; }
  .dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) h2 { font-size:clamp(1.2rem,5vw,1.55rem) !important; }
 }
 @media(prefers-reduced-motion:reduce) { .dashboard-app .data-loading-mark img { animation:none !important; } }
+
+
+/* Final narrow-screen typography correction: labels and INR amounts stay readable. */
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(2),
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) { min-height:142px !important; justify-content:flex-start !important; gap:10px !important; }
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(2) > div:first-child,
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) > div:first-child { flex:0 0 auto !important; gap:7px !important; }
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(2) .summary-detail,
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) .summary-detail { margin-top:auto !important; padding-top:8px !important; border-top:1px solid rgba(255,255,255,.26) !important; font-size:clamp(.6rem,2.25vw,.72rem) !important; }
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(2) h2,
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) h2 { font-size:clamp(1.05rem,4.25vw,1.48rem) !important; letter-spacing:-.035em !important; }
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(2) .card-label,
+.dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) .card-label { font-size:clamp(.59rem,2.2vw,.72rem) !important; letter-spacing:.035em !important; }
+@media(max-width:380px) { .dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(2), .dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) { min-height:136px !important; } .dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(2) h2, .dashboard-app .summary-grid.dashboard-mobile-home .summary-card:nth-child(3) h2 { font-size:clamp(1rem,4vw,1.25rem) !important; } }
