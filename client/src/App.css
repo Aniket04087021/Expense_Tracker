@@ -7886,3 +7886,59 @@ html, body { overflow-x: hidden !important; }
  .dashboard-app[data-mobile-view="notifications"] .notifications-clear{display:flex!important;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:12px!important;border-radius:13px!important;background:#effaf4!important;color:#087f5b!important;font-size:clamp(.72rem,3vw,.9rem)!important;}
 }
 @media(max-width:360px){.dashboard-app .dashboard-nav-item small{font-size:9px!important;}.dashboard-app .dashboard-bottom-nav{padding-inline:5px!important;}}
+
+
+/* Premium mobile sidebar redesign: stronger hierarchy, richer brand panel, generous rhythm. */
+@media(max-width:768px){
+ .dashboard-app .sidebar,
+ .dashboard-app .dashboard-sidebar,
+ .dashboard-app .mobile-sidebar,
+ .dashboard-app .sidebar-panel{
+   width:min(86vw,340px)!important;max-width:340px!important;min-width:280px!important;
+   background:#fff!important;color:#15251f!important;
+   box-shadow:18px 0 60px rgba(12,30,24,.2)!important;
+   border-right:1px solid rgba(226,236,230,.9)!important;
+ }
+ .dashboard-app .sidebar-header,
+ .dashboard-app .mobile-sidebar-header,
+ .dashboard-app .sidebar-brand{
+   min-height:112px!important;padding:22px 20px!important;gap:14px!important;
+   background:radial-gradient(circle at 100% 0%,rgba(255,255,255,.22),transparent 40%),linear-gradient(135deg,#087f5b 0%,#0d9b70 55%,#16a085 100%)!important;
+   color:#fff!important;border:0!important;position:relative;overflow:hidden;
+ }
+ .dashboard-app .sidebar-header::after,
+ .dashboard-app .mobile-sidebar-header::after,
+ .dashboard-app .sidebar-brand::after{content:"";position:absolute;width:150px;height:150px;right:-72px;top:-78px;border:1px solid rgba(255,255,255,.2);border-radius:50%;box-shadow:0 0 0 22px rgba(255,255,255,.06),0 0 0 44px rgba(255,255,255,.035);pointer-events:none;}
+ .dashboard-app .sidebar-logo,
+ .dashboard-app .sidebar-brand-icon,
+ .dashboard-app .mobile-sidebar-logo{width:46px!important;height:46px!important;min-width:46px!important;border-radius:15px!important;background:rgba(255,255,255,.18)!important;border:1px solid rgba(255,255,255,.32)!important;box-shadow:0 4px 12px rgba(0,0,0,.08)!important;}
+ .dashboard-app .sidebar-header h1,
+ .dashboard-app .sidebar-header h2,
+ .dashboard-app .mobile-sidebar-header h1,
+ .dashboard-app .mobile-sidebar-header h2{color:#fff!important;font-size:1.05rem!important;font-weight:800!important;letter-spacing:-.025em!important;line-height:1.15!important;}
+ .dashboard-app .sidebar-section-title,
+ .dashboard-app .sidebar-label,
+ .dashboard-app .mobile-sidebar-section-title{margin:20px 20px 8px!important;color:#8a9a92!important;font-size:10px!important;font-weight:800!important;letter-spacing:.14em!important;text-transform:uppercase!important;}
+ .dashboard-app .sidebar-nav,
+ .dashboard-app .sidebar-menu,
+ .dashboard-app .mobile-sidebar-nav{padding:8px 12px 18px!important;gap:5px!important;}
+ .dashboard-app .sidebar-nav a,
+ .dashboard-app .sidebar-nav button,
+ .dashboard-app .sidebar-menu a,
+ .dashboard-app .sidebar-menu button,
+ .dashboard-app .mobile-sidebar-nav a,
+ .dashboard-app .mobile-sidebar-nav button{min-height:46px!important;padding:0 13px!important;border-radius:13px!important;gap:12px!important;color:#46584f!important;font-size:13px!important;font-weight:600!important;transition:background .18s ease,color .18s ease,transform .18s ease!important;}
+ .dashboard-app .sidebar-nav a.active,
+ .dashboard-app .sidebar-nav button.active,
+ .dashboard-app .sidebar-menu a.active,
+ .dashboard-app .sidebar-menu button.active,
+ .dashboard-app .mobile-sidebar-nav a.active,
+ .dashboard-app .mobile-sidebar-nav button.active{background:#e9f8f0!important;color:#07845f!important;box-shadow:inset 3px 0 0 #0c9a6b!important;}
+ .dashboard-app .sidebar-nav svg,
+ .dashboard-app .sidebar-menu svg,
+ .dashboard-app .mobile-sidebar-nav svg{width:18px!important;height:18px!important;stroke-width:1.9!important;}
+ .dashboard-app .sidebar-footer,
+ .dashboard-app .mobile-sidebar-footer{padding:16px 20px!important;border-top:1px solid #edf2ef!important;color:#94a39b!important;font-size:10px!important;background:#fbfdfc!important;}
+ .dashboard-app .sidebar-close,
+ .dashboard-app .mobile-sidebar-close{width:32px!important;height:32px!important;border-radius:11px!important;background:rgba(255,255,255,.18)!important;border:1px solid rgba(255,255,255,.24)!important;color:#fff!important;}
+}
