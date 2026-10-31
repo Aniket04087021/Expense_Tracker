@@ -105,6 +105,17 @@ const User = mongoose.model("User", userSchema);
 const Transaction = mongoose.model("Transaction", transactionSchema);
 const Goal = mongoose.model("Goal", goalSchema);
 const GoalContribution = mongoose.model("GoalContribution", goalContributionSchema);
+const notificationSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  title: { type: String, required: true, trim: true, maxlength: 120 },
+  message: { type: String, required: true, trim: true, maxlength: 300 },
+  kind: { type: String, enum: ["account", "transaction", "goal", "system"], default: "system" },
+  read: { type: Boolean, default: false },
+}, { timestamps: true });
+const Notification = mongoose.model("Notification", notificationSchema);
+const createNotification = (userId, title, message, kind = "system") =>
+  Notification.create({ user: userId, title, message, kind });
+
 
 const signToken = (user) =>
   jwt.sign(
@@ -335,7 +346,7 @@ app.post("/api/transactions", requireAuth, async (req, res) => {
       type,
     });
 
-    res.status(201).json(created);
+    await createNotification(req.user._id, "Transaction added", `${created.title} was added successfully.`, "transaction");\n    res.status(201).json(created);
   } catch (error) {
     res.status(500).json({ error: "Failed to save transaction" });
   }
@@ -473,7 +484,38 @@ app.delete("/api/goals/contributions/:id", requireAuth, async (req, res) => {
   }
 });
 
-const server = app.listen(PORT, () => {
+const server = 
+// ── Notifications ────────────────────────────────────────────────────────
+app.get("/api/notifications", requireAuth, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(100).lean();
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load notifications" });
+  }
+});
+app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { read: true }, { new: true }
+    );
+    if (!notification) return res.status(404).json({ error: "Notification not found" });
+    res.json(notification);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update notification" });
+  }
+});
+app.patch("/api/notifications/read-all", requireAuth, async (req, res) => {
+  try {
+    await Notification.updateMany({ user: req.user._id, read: false }, { read: true });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update notifications" });
+  }
+});
+
+app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
