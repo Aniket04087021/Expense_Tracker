@@ -2690,6 +2690,10 @@ if (authLoading) {
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>
               <small>Analytics</small>
             </button>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "notifications" ? "active" : ""}`} onClick={() => openMobileView("notifications")} aria-current={mobileView === "notifications" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+              <small>Alerts</small>
+            </button>
           </nav>
         </>
       )}
