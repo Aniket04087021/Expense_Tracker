@@ -257,6 +257,7 @@ app.post("/api/auth/register", authRateLimit, async (req, res) => {
 
     const token = signToken(user);
     setAuthCookie(res, token);
+    await createNotification(user._id, "Welcome to Expnse", "Your personal finance space is ready.", "account");
 
     return res.status(201).json({
       token,
@@ -346,7 +347,8 @@ app.post("/api/transactions", requireAuth, async (req, res) => {
       type,
     });
 
-    await createNotification(req.user._id, "Transaction added", `${created.title} was added successfully.`, "transaction");\n    res.status(201).json(created);
+    await createNotification(req.user._id, "Transaction added", `${created.title} was added successfully.`, "transaction");
+    res.status(201).json(created);
   } catch (error) {
     res.status(500).json({ error: "Failed to save transaction" });
   }
@@ -399,6 +401,7 @@ app.post("/api/goals", requireAuth, async (req, res) => {
       period,
       amount: parsedAmount,
     });
+    await createNotification(req.user._id, "Goal created", `${goal.name} is now ready to track.`, "goal");
     res.status(201).json(goal);
   } catch (error) {
     res.status(500).json({ error: "Failed to create goal" });
@@ -465,6 +468,7 @@ app.post("/api/goals/:goalId/contributions", requireAuth, async (req, res) => {
       amount: parsedAmount,
       note: typeof note === "string" ? note.trim().slice(0, 240) : "",
     });
+    await createNotification(req.user._id, "Goal contribution added", `${goal.name} received a new contribution.`, "goal");
     res.status(201).json(contribution);
   } catch (error) {
     res.status(500).json({ error: "Failed to save contribution" });
@@ -484,7 +488,6 @@ app.delete("/api/goals/contributions/:id", requireAuth, async (req, res) => {
   }
 });
 
-const server = 
 // ── Notifications ────────────────────────────────────────────────────────
 app.get("/api/notifications", requireAuth, async (req, res) => {
   try {
@@ -515,7 +518,7 @@ app.patch("/api/notifications/read-all", requireAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 

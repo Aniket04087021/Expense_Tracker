@@ -6905,10 +6905,52 @@ img, svg, canvas, video, iframe { max-width: 100%; }
 
   .mobile-drawer-footer {
     margin-top: auto;
-    padding: 16px;
+    padding: 12px 14px 16px;
     color: #64748b;
-    font-size: .7rem;
     text-align: center;
+  }
+
+  .mobile-drawer-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 44px;
+    margin-bottom: 12px;
+    border: 1px solid #fecaca;
+    border-radius: 11px;
+    color: #b91c1c;
+    background: #fff7f7;
+    font-size: .8rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease, transform .18s ease;
+  }
+
+  .mobile-drawer-logout:hover,
+  .mobile-drawer-logout:focus-visible {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    outline: none;
+  }
+
+  .mobile-drawer-logout:active {
+    transform: scale(.98);
+  }
+
+  .mobile-drawer-logout svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobile-drawer-footer small {
+    font-size: .68rem;
   }
 
   @keyframes mobile-drawer-in {
@@ -8007,3 +8049,398 @@ html, body { overflow-x: hidden !important; }
  .dashboard-app .dashboard-bottom-nav .dashboard-nav-add:active{transform:translateY(-5px)!important;}
 }
 @media(prefers-reduced-motion:reduce){.dashboard-app .dashboard-bottom-nav .dashboard-nav-add{transition:none!important;}}
+
+/* Notifications inbox states and controls. */
+.dashboard-app .mobile-notification-button {
+  position: relative;
+}
+.dashboard-app .notification-badge {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  background: #ef4444;
+  font-size: .56rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.dashboard-app .notifications-list-heading > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.dashboard-app .notifications-list-heading > div:first-child > span {
+  color: #84918b;
+  font-size: .72rem;
+}
+.dashboard-app .notifications-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dashboard-app .notifications-list-heading button {
+  transition: background .18s ease, transform .18s ease;
+}
+.dashboard-app .notifications-list-heading button:hover {
+  background: #d9f3e5;
+}
+.dashboard-app .notifications-list-heading button:active {
+  transform: scale(.96);
+}
+.dashboard-app .notifications-refresh {
+  width: 34px;
+  height: 34px;
+  padding: 0 !important;
+  color: #087f5b !important;
+  background: #f1faf5 !important;
+  font-size: 1.15rem !important;
+  line-height: 1;
+}
+.dashboard-app .notifications-refresh:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+.dashboard-app .notifications-state {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 38px 20px;
+  border: 1px solid #e6eee9;
+  border-radius: 17px;
+  background: #fff;
+  color: #52665c;
+  text-align: center;
+}
+.dashboard-app .notifications-state strong {
+  color: #18372b;
+  font-size: .9rem;
+}
+.dashboard-app .notifications-state p {
+  margin: 0;
+  font-size: .78rem;
+}
+.dashboard-app .notifications-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #d9f1e4;
+  border-top-color: #07845f;
+  border-radius: 50%;
+  animation: notifications-spin .8s linear infinite;
+}
+.dashboard-app .notifications-error button {
+  margin-top: 5px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  background: #07845f;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dashboard-app .notification-item {
+  align-items: center;
+  min-height: 88px;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.dashboard-app .notification-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(16,42,35,.07);
+}
+.dashboard-app .notification-item-icon {
+  color: #087f5b;
+  background: #e1f6eb;
+  font-size: .95rem;
+  font-weight: 800;
+}
+.dashboard-app .notification-item-icon.transaction { color: #2563eb; background: #e8f1ff; }
+.dashboard-app .notification-item-icon.goal { color: #b45309; background: #fff3d6; }
+.dashboard-app .notification-item-icon.account { color: #7c3aed; background: #f0e9ff; }
+.dashboard-app .notification-item-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dashboard-app .notification-item-title span {
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #087f5b;
+  background: #dcf7e8;
+  font-size: .56rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+.dashboard-app .notification-item > button {
+  flex: 0 0 auto;
+  border-radius: 8px;
+  transition: background .18s ease;
+}
+.dashboard-app .notification-item > button:hover {
+  background: #eaf8f0;
+}
+@keyframes notifications-spin {
+  to { transform: rotate(360deg); }
+}
+@media (max-width: 520px) {
+  .dashboard-app .notifications-page {
+    padding: 8px 0 24px;
+  }
+  .dashboard-app .notifications-hero {
+    margin-bottom: 28px;
+    min-height: 98px;
+    padding: 18px;
+  }
+  .dashboard-app .notifications-list-heading h3 {
+    font-size: .98rem;
+  }
+  .dashboard-app .notification-item {
+    gap: 10px;
+    padding: 13px;
+  }
+  .dashboard-app .notification-item-copy p {
+    font-size: .78rem;
+  }
+  .dashboard-app .notification-item > button {
+    padding: 5px 4px;
+    font-size: .64rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-app .notifications-spinner { animation: none; }
+  .dashboard-app .notification-item,
+  .dashboard-app .notifications-list-heading button { transition: none; }
+}
+
+/* Notifications use the fifth Alerts destination in the mobile dock. */
+@media (max-width: 768px) {
+  .dashboard-app .dashboard-bottom-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+  .dashboard-app .dashboard-bottom-nav::before {
+    width: 20% !important;
+    left: calc((100% / 5 * var(--active-index)) + (100% / 10) - 26px) !important;
+  }
+}
+
+/* Compact mobile notifications empty state. */
+@media (max-width: 768px) {
+  .dashboard-app[data-mobile-view="notifications"] .notifications-page {
+    width: 100%;
+    max-width: 520px;
+    min-height: 0;
+    gap: 14px !important;
+    padding: 8px 10px 24px !important;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-hero {
+    display: none !important;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-list-wrap {
+    gap: 12px;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-list-heading {
+    min-height: 30px;
+    padding: 0 2px;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-list-heading h3 {
+    color: #17352a !important;
+    font-size: 0.88rem !important;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-list-heading > div:first-child > span {
+    color: #9aa8a1;
+    font-size: 0.62rem;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-refresh {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #edf9f2 !important;
+    font-size: 1rem !important;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-empty {
+    width: 100%;
+    min-height: 274px !important;
+    padding: 28px 18px !important;
+    border: 1px solid #edf1ef;
+    border-radius: 16px !important;
+    background: #fff;
+    box-shadow: 0 5px 18px rgba(21, 53, 42, 0.045);
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-empty-icon {
+    width: 38px;
+    height: 38px;
+    margin-bottom: 14px;
+    color: #52635b;
+    background: #f1f4f3;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-empty-icon svg {
+    width: 17px;
+    height: 17px;
+    stroke-width: 1.5;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-empty h3 {
+    margin-bottom: 6px;
+    color: #19382d !important;
+    font-size: 0.78rem !important;
+    font-weight: 800;
+  }
+
+  .dashboard-app[data-mobile-view="notifications"] .notifications-empty p {
+    max-width: 220px;
+    margin: 0;
+    color: #66776f !important;
+    font-size: 0.68rem !important;
+    line-height: 1.45 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard-app[data-mobile-view="notifications"] .notifications-page {
+    padding-inline: 8px !important;
+  }
+}
+
+/* Keep notification cards aligned on small screens. */
+@media (max-width: 768px) {
+  .dashboard-app .notification-item {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 0;
+    padding: 11px 10px !important;
+    border-radius: 13px;
+  }
+
+  .dashboard-app .notification-item-icon {
+    position: relative;
+    display: grid !important;
+    place-items: center !important;
+    align-self: center;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 10px;
+    font-size: 0;
+    line-height: 1;
+    text-align: center;
+    transform: none;
+  }
+
+  .dashboard-app .notification-item-glyph {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: block;
+    width: auto;
+    height: auto;
+    color: currentColor;
+    font-family: Arial, sans-serif;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+  }
+
+  .dashboard-app .notification-item-copy {
+    min-width: 0;
+  }
+
+  .dashboard-app .notification-item-title {
+    min-width: 0;
+    gap: 5px;
+  }
+
+  .dashboard-app .notification-item-copy strong {
+    min-width: 0;
+    overflow: hidden;
+    color: #18372b;
+    font-size: 0.73rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-app .notification-item-title span {
+    flex: 0 0 auto;
+    padding: 2px 5px;
+    font-size: 0.46rem;
+  }
+
+  .dashboard-app .notification-item-copy p {
+    margin: 4px 0 3px;
+    overflow: hidden;
+    color: #718078;
+    font-size: 0.62rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-app .notification-item-copy time {
+    display: block;
+    color: #a0aaa5;
+    font-size: 0.55rem;
+    line-height: 1.2;
+  }
+
+  .dashboard-app .notification-item > button {
+    align-self: center;
+    min-width: 42px;
+    padding: 4px 2px;
+    border-radius: 6px;
+    color: #087f5b;
+    font-size: 0.52rem;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+}
+
+/* Give the Add action a clear icon-to-label rhythm. */
+@media (max-width: 768px) {
+  .dashboard-app .dashboard-bottom-nav .dashboard-nav-add {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    padding-top: 6px !important;
+  }
+
+  .dashboard-app .dashboard-bottom-nav .dashboard-nav-add svg {
+    display: block !important;
+    width: 21px !important;
+    height: 21px !important;
+    flex: 0 0 21px !important;
+    margin: 0 !important;
+    overflow: visible;
+  }
+
+  .dashboard-app .dashboard-bottom-nav .dashboard-nav-add small {
+    display: block !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+  }
+}

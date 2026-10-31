@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./mobile-fixes.css";
@@ -314,6 +314,7 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -425,32 +426,46 @@ function App() {
     }
   };
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!user) { setNotifications([]); return; }
     setNotificationsLoading(true);
+    setNotificationsError("");
     try {
       const response = await apiRequest("/notifications");
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(Array.isArray(data) ? data : []);
-      }
-    } catch { /* keep last loaded notifications */ }
+      if (!response.ok) throw new Error("Unable to load notifications");
+      const data = await response.json();
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch {
+      setNotificationsError("We couldn't load your notifications.");
+    }
     finally { setNotificationsLoading(false); }
-  };
+  }, [user]);
 
-  useEffect(() => { if (user) loadNotifications(); else setNotifications([]); }, [user]);
+  useEffect(() => {
+    if (user) loadNotifications();
+    else {
+      setNotifications([]);
+      setNotificationsError("");
+    }
+  }, [user, loadNotifications]);
+
+  useEffect(() => {
+    if (user && mobileView === "notifications") loadNotifications();
+  }, [mobileView, user, loadNotifications]);
 
   const markNotificationRead = async (id) => {
     try {
       const response = await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
-      if (response.ok) setNotifications((items) => items.map((item) => item._id === id ? { ...item, read: true } : item));
+      if (!response.ok) throw new Error("Unable to update notification");
+      setNotifications((items) => items.map((item) => item._id === id ? { ...item, read: true } : item));
     } catch { notify("Could not update notification.", "error"); }
   };
 
   const markAllNotificationsRead = async () => {
     try {
       const response = await apiRequest("/notifications/read-all", { method: "PATCH" });
-      if (response.ok) setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+      if (!response.ok) throw new Error("Unable to update notifications");
+      setNotifications((items) => items.map((item) => ({ ...item, read: true })));
     } catch { notify("Could not update notifications.", "error"); }
   };
 
@@ -1702,6 +1717,7 @@ if (authLoading) {
               onClick={() => openMobileView("notifications")}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+              {notifications.some((item) => !item.read) && <span className="notification-badge">{notifications.filter((item) => !item.read).length > 9 ? "9+" : notifications.filter((item) => !item.read).length}</span>}
             </button>
             <div className="profile-menu" ref={profileMenuRef}>
               <button
@@ -1785,7 +1801,23 @@ if (authLoading) {
                   <button type="button" onClick={() => openMobileView("analytics")}><span>◷</span>Budget <b>›</b></button>
                   <button type="button" onClick={() => openMobileView("add")}><span>▣</span>Add transaction</button>
                 </div>
-                <div className="mobile-drawer-footer">Expnse · Personal finance</div>
+                <div className="mobile-drawer-footer">
+                  <button
+                    type="button"
+                    className="mobile-drawer-logout"
+                    onClick={() => {
+                      setShowMobileDrawer(false);
+                      handleLogout();
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M10 17l5-5-5-5M15 12H3" />
+                      <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+                    </svg>
+                    <span>Log out</span>
+                  </button>
+                  <small>Expnse · Personal finance</small>
+                </div>
               </aside>
             </div>
           )}
@@ -2693,17 +2725,19 @@ if (authLoading) {
                 <span className="notifications-hero-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg></span>
               </div>
               <div className="notifications-list-wrap">
-                <div className="notifications-list-heading"><h3>Activity</h3>{notifications.some((item) => !item.read) && <button type="button" onClick={markAllNotificationsRead}>Mark all read</button>}</div>
-                {notificationsLoading ? <article className="notifications-empty"><p>Loading your notifications…</p></article> : notifications.length === 0 ? (
+                <div className="notifications-list-heading"><div><h3>Activity</h3><span>{notifications.length} {notifications.length === 1 ? "notification" : "notifications"}</span></div><div className="notifications-list-actions">{notifications.some((item) => !item.read) && <button type="button" onClick={markAllNotificationsRead}>Mark all read</button>}<button type="button" className="notifications-refresh" onClick={loadNotifications} disabled={notificationsLoading} aria-label="Refresh notifications">↻</button></div></div>
+                {notificationsLoading ? <article className="notifications-state"><div className="notifications-spinner" aria-hidden="true" /><strong>Checking notifications</strong><p>Looking for recent account activity…</p></article> : notificationsError ? (
+                  <article className="notifications-state notifications-error"><strong>{notificationsError}</strong><p>Check your connection and try again.</p><button type="button" onClick={loadNotifications}>Try again</button></article>
+                ) : notifications.length === 0 ? (
                   <article className="notifications-empty"><div className="notifications-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M4 4l16 16" /></svg></div><h3>You're all caught up</h3><p>Account and transaction activity will appear here.</p></article>
-                ) : <div className="notifications-list">{notifications.map((item) => <article className={`notification-item ${item.read ? "read" : "unread"}`} key={item._id}><span className="notification-item-icon" aria-hidden="true">✦</span><div className="notification-item-copy"><strong>{item.title}</strong><p>{item.message}</p><time>{new Date(item.createdAt).toLocaleString()}</time></div>{!item.read && <button type="button" onClick={() => markNotificationRead(item._id)} aria-label="Mark notification as read">Mark read</button>}</article>)}</div>}
+                ) : <div className="notifications-list">{notifications.map((item) => <article className={`notification-item ${item.read ? "read" : "unread"}`} key={item._id}><span className={`notification-item-icon ${item.kind || "system"}`} aria-hidden="true"><span className="notification-item-glyph">{item.kind === "transaction" ? "₹" : item.kind === "goal" ? "⌁" : item.kind === "account" ? "♙" : "✦"}</span></span><div className="notification-item-copy"><div className="notification-item-title"><strong>{item.title}</strong>{!item.read && <span>NEW</span>}</div><p>{item.message}</p><time>{new Date(item.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time></div>{!item.read && <button type="button" onClick={() => markNotificationRead(item._id)} aria-label={`Mark ${item.title} as read`}>Mark read</button>}</article>)}</div>}
               </div>
             </div>
           </section>
           <nav
             className="dashboard-bottom-nav"
             aria-label="Dashboard navigation"
-            style={{ "--active-index": mobileView === "transactions" ? 1 : mobileView === "add" ? 2 : mobileView === "analytics" ? 3 : 0 }}
+            style={{ "--active-index": mobileView === "transactions" ? 1 : mobileView === "add" ? 2 : mobileView === "analytics" ? 3 : mobileView === "notifications" ? 4 : 0 }}
           >
             <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")} aria-current={mobileView === "home" ? "page" : undefined}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></svg>
