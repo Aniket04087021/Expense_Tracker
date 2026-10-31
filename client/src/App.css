@@ -7958,3 +7958,31 @@ html, body { overflow-x: hidden !important; }
 .dashboard-app .notification-item-copy p{margin:4px 0 7px;color:#5c7066;font-size:.85rem;line-height:1.5;overflow-wrap:anywhere;}
 .dashboard-app .notification-item-copy time{color:#91a097;font-size:.72rem;}
 .dashboard-app .notification-item>button{border:0;background:transparent;color:#07845f;font-weight:700;font-size:.72rem;padding:5px;cursor:pointer;}
+
+
+/* Make the central Add action match the same rounded navigation item system. */
+@media(max-width:768px){
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add,
+ .dashboard-app .dashboard-bottom-nav button.dashboard-nav-add,
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-item.dashboard-nav-add{
+   width:100%!important;min-width:0!important;min-height:58px!important;
+   display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+   gap:4px!important;padding:5px 1px!important;margin:0!important;
+   border:0!important;border-radius:13px!important;
+   background:transparent!important;color:#65756d!important;
+   box-shadow:none!important;transform:none!important;position:static!important;
+ }
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add::before,
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add::after{display:none!important;content:none!important;}
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add svg{
+   width:22px!important;height:22px!important;stroke:currentColor!important;stroke-width:1.9!important;
+ }
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add small,
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add span{
+   display:block!important;font-size:10px!important;font-weight:600!important;line-height:1.1!important;color:inherit!important;
+ }
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add.active,
+ .dashboard-app .dashboard-bottom-nav .dashboard-nav-add[aria-current="page"]{
+   background:#eaf8f0!important;color:#07845f!important;
+ }
+}
