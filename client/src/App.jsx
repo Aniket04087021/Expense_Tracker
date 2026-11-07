@@ -3,6 +3,12 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./mobile-fixes.css";
 import "./App.css";
+import {
+  calculateGoalProgress,
+  calculateSavingsRate,
+  calculateTotals,
+  normalizeTransactions,
+} from "./utils/finance";
 const logo = "/icon.svg";
 
 const categoryPalette = {
@@ -75,6 +81,31 @@ function CategoryIcon({ category, type, className = "" }) {
   return <span className={`category-icon category-icon-${categoryIconTone[key]} ${className}`} aria-hidden="true">
     <svg viewBox="0 0 24 24">{categoryIconPaths[key]}</svg>
   </span>;
+}
+
+function IconSelect({ icon, className = "", children, ...props }) {
+  return (
+    <div className={`icon-select ${className}`}>
+      <span className="icon-select-symbol" aria-hidden="true">{icon}</span>
+      <select {...props}>{children}</select>
+    </div>
+  );
+}
+
+function FilterIcon({ name, category }) {
+  if (name === "category") return <CategoryIcon category={category} />;
+  const paths = {
+    categories: <><path d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 15h6v4h-6z" /></>,
+    types: <><path d="M5 7h14M5 12h10M5 17h6" /><path d="m17 14 2 2 3-4" /></>,
+    expense: <><path d="M12 5v14m-5-5 5 5 5-5" /><path d="M5 4h14" /></>,
+    income: <><path d="M12 19V5m-5 5 5-5 5 5" /><path d="M5 20h14" /></>,
+    investment: <><path d="m4 17 5-5 4 3 7-8" /><path d="M15 7h5v5" /><path d="M4 20h16" /></>,
+    newest: <><path d="M12 4v16m-5-5 5 5 5-5" /></>,
+    oldest: <><path d="M12 20V4m-5 5 5-5 5 5" /></>,
+    largest: <><path d="m5 17 6-6 4 3 5-7" /><path d="M15 7h5v5" /></>,
+    smallest: <><path d="m5 7 6 6 4-3 5 7" /><path d="M15 17h5v-5" /></>,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name] || paths.categories}</svg>;
 }
 
 const defaultDate = new Date().toISOString().slice(0, 10);
@@ -172,15 +203,149 @@ const goalCategoryOptions = [
   "Other",
 ];
 
-// ── Core API helper — always sends token via Authorization header if available ──
+const accountTypes = [
+  { value: "bank", label: "Bank account" },
+  { value: "credit_card", label: "Credit card" },
+  { value: "cash", label: "Cash" },
+  { value: "wallet", label: "Digital wallet" },
+  { value: "other", label: "Other" },
+];
+
+const accountTypeLabel = (type) => accountTypes.find((item) => item.value === type)?.label || "Account";
+
+function AccountIcon({ type, className = "" }) {
+  const paths = {
+    bank: <><path d="m3 10 9-6 9 6" /><path d="M5 10v9M9 10v9M15 10v9M19 10v9M3 20h18" /></>,
+    credit_card: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h3" /></>,
+    cash: <><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="3" /><path d="M6 9h.01M18 15h.01" /></>,
+    wallet: <><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H19v14H6.5A2.5 2.5 0 0 1 4 16.5z" /><path d="M4 8h13a2 2 0 0 1 2 2v2h-4a2 2 0 0 0 0 4h4v3" /><path d="M15 14h.01" /></>,
+    other: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.8c-1.1 1-1.8 1.4-1.8 3.2M12 17.5h.01" /></>,
+  };
+  return <span className={`account-icon ${className}`} aria-hidden="true"><svg viewBox="0 0 24 24">{paths[type] || paths.other}</svg></span>;
+}
+
+function AccountFilterPicker({ accounts, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selected = accounts.find((account) => String(account._id) === String(value));
+  const choose = (nextValue) => {
+    onChange(nextValue);
+    setOpen(false);
+  };
+  return (
+    <div
+      className="account-filter-picker"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        className={`account-filter-trigger${open ? " open" : ""}`}
+        aria-label="Filter by account"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((isOpen) => !isOpen)}
+      >
+        <AccountIcon type={selected?.type || "other"} className="account-filter-icon" />
+        <span className="account-filter-copy">
+          <strong>{selected?.name || "All accounts"}</strong>
+          <small>{selected ? accountTypeLabel(selected.type) : `${accounts.length} accounts`}</small>
+        </span>
+        <svg className="account-filter-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="account-filter-menu" role="listbox" aria-label="Accounts">
+          <button type="button" role="option" aria-selected={!value} className={`account-filter-option${!value ? " selected" : ""}`} onClick={() => choose("")}>
+            <AccountIcon type="other" className="account-filter-option-icon" />
+            <span><strong>All accounts</strong><small>Show every account</small></span>
+            {!value && <b aria-hidden="true">✓</b>}
+          </button>
+          {accounts.map((account) => (
+            <button type="button" role="option" aria-selected={String(value) === String(account._id)} className={`account-filter-option${String(value) === String(account._id) ? " selected" : ""}`} key={account._id} onClick={() => choose(account._id)}>
+              <AccountIcon type={account.type} className="account-filter-option-icon" />
+              <span><strong>{account.name}</strong><small>{accountTypeLabel(account.type)} · {formatCurrency.format(account.balance || 0)}</small></span>
+              {String(value) === String(account._id) && <b aria-hidden="true">✓</b>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterOptionPicker({ ariaLabel, value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value) || options[0];
+  const choose = (nextValue) => {
+    onChange(nextValue);
+    setOpen(false);
+  };
+  return (
+    <div
+      className="account-filter-picker"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        className={`account-filter-trigger${open ? " open" : ""}`}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((isOpen) => !isOpen)}
+      >
+        <span className="filter-option-symbol"><FilterIcon name={selected.icon} category={selected.category} /></span>
+        <span className="account-filter-copy">
+          <strong>{selected.label}</strong>
+          <small>{selected.description}</small>
+        </span>
+        <svg className="account-filter-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="account-filter-menu" role="listbox" aria-label={ariaLabel}>
+          {options.map((option) => (
+            <button type="button" role="option" aria-selected={value === option.value} className={`account-filter-option${value === option.value ? " selected" : ""}`} key={option.value} onClick={() => choose(option.value)}>
+              <span className="filter-option-symbol option"><FilterIcon name={option.icon} category={option.category} /></span>
+              <span><strong>{option.label}</strong><small>{option.description}</small></span>
+              {value === option.value && <b aria-hidden="true">✓</b>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DrawerIcon({ name }) {
+  const paths = {
+    home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></>,
+    transactions: <><path d="M5 6h14M5 12h14M5 18h14" /><path d="M8 6h.01M8 12h.01M8 18h.01" /></>,
+    analytics: <><path d="M5 20V10M12 20V4M19 20v-7" /><path d="M3 20h18" /></>,
+    accounts: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h3" /></>,
+    notifications: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
+    budget: <><path d="M12 3v9h9" /><path d="M20.5 15A9 9 0 1 1 9 3.5" /></>,
+    add: <><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M12 8v8M8 12h8" /></>,
+    settings: <><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /><circle cx="12" cy="12" r="4" /></>,
+    pdf: <><path d="M6 3h9l3 3v15H6z" /><path d="M14 3v4h4M8.5 13h2a1.5 1.5 0 0 0 0-3h-2v5M13 15v-5h1.5a2.5 2.5 0 0 1 0 5H13M18 10h-3v5" /></>,
+    install: <><path d="M12 3v11m-4-4 4 4 4-4M5 18v2h14v-2" /></>,
+  };
+  return <span className="mobile-drawer-icon" aria-hidden="true"><svg viewBox="0 0 24 24">{paths[name] || paths.home}</svg></span>;
+}
+
+// ── Core API helper — authentication is carried by the HTTP-only session cookie. ──
 const apiRequest = async (path, options = {}) => {
-  const token = localStorage.getItem("token");
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -194,6 +359,7 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [resetToken, setResetToken] = useState(() => new URLSearchParams(window.location.search).get("reset_password") || "");
 
   const handleAuthSubmit = async (event) => {
     event.preventDefault();
@@ -201,6 +367,54 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
     const trimmedEmail = authEmail.trim();
     const trimmedPassword = authPassword.trim();
     const trimmedName = authName.trim();
+    if (authMode === "forgot") {
+      if (!trimmedEmail) {
+        setAuthError("Enter your email address.");
+        return;
+      }
+      try {
+        setAuthLoading(true);
+        const response = await apiRequest("/auth/forgot-password", {
+          method: "POST",
+          body: JSON.stringify({ email: trimmedEmail }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not start recovery.");
+        notify(data.message || "Check your email for recovery instructions.", "info");
+        setAuthMode("login");
+      } catch (error) {
+        setAuthError(error.message || "Could not start password recovery. Try again.");
+        notify(error.message || "Could not start password recovery. Try again.", "error");
+      } finally {
+        setAuthLoading(false);
+      }
+      return;
+    }
+    if (authMode === "reset") {
+      if (!resetToken || trimmedPassword.length < 8) {
+        setAuthError("Use a valid reset link and an 8-character minimum password.");
+        return;
+      }
+      try {
+        setAuthLoading(true);
+        const response = await apiRequest("/auth/reset-password", {
+          method: "POST",
+          body: JSON.stringify({ token: resetToken, password: trimmedPassword }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not reset password.");
+        notify(data.message || "Password reset successfully.");
+        window.history.replaceState({}, "", window.location.pathname);
+        setAuthMode("login");
+        setResetToken("");
+      } catch (error) {
+        setAuthError(error.message);
+        notify(error.message, "error");
+      } finally {
+        setAuthLoading(false);
+      }
+      return;
+    }
     if (!trimmedEmail || !trimmedPassword) {
       setAuthError("Email and password are required.");
       notify("Enter your email and password to continue.", "error");
@@ -228,7 +442,6 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
         notify(message, "error");
         return;
       }
-      if (data.token) localStorage.setItem("token", data.token);
       notify(authMode === "login" ? "Login successful. Welcome back!" : "Account created successfully. Welcome to Expnse!");
       onSuccess(data.user || null);
     } catch {
@@ -241,34 +454,59 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-card">
+      <div className="modal-card auth-modal-card">
         <div className="modal-header">
           <div className="brand">
             <img src={logo} alt="Expnse Logo" className="logo" />
           </div>
-          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
-        </div>
-        <div className="auth-toggle">
-          <button
-            type="button"
-            className={authMode === "login" ? "pill active" : "pill"}
-            onClick={() => setAuthMode("login")}
-          >
-            Login
-          </button>
-          <button
-            type="button"
-            className={authMode === "signup" ? "pill active" : "pill"}
-            onClick={() => setAuthMode("signup")}
-          >
-            Sign up
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>
           </button>
         </div>
-        <p className="modal-subtitle">
-          {authMode === "login"
-            ? "Welcome back. Sign in to your account."
-            : "Create your free account. Takes 30 seconds."}
-        </p>
+        {authMode === "reset" || authMode === "forgot" ? (
+          <div className="reset-password-hero">
+            <div className="reset-password-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                {authMode === "forgot" ? (
+                  <><path d="M4 7.5h16v11H4z" /><path d="m5 9 7 5 7-5" /></>
+                ) : (
+                  <><path d="M7 10V7a5 5 0 0 1 10 0v3" /><rect x="4" y="10" width="16" height="11" rx="3" /><path d="M12 14v3" /></>
+                )}
+              </svg>
+            </div>
+            <span className="reset-password-eyebrow">Account recovery</span>
+            <h2>{authMode === "forgot" ? "Forgot your password?" : "Choose a new password"}</h2>
+            <p>
+              {authMode === "forgot"
+                ? "No worries. Enter your email and we’ll send a secure link to get you back into your account."
+                : "Your reset link is ready. Create a strong password to secure your Expnse account."}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="auth-toggle">
+              <button
+                type="button"
+                className={authMode === "login" ? "pill active" : "pill"}
+                onClick={() => setAuthMode("login")}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className={authMode === "signup" ? "pill active" : "pill"}
+                onClick={() => setAuthMode("signup")}
+              >
+                Sign up
+              </button>
+            </div>
+            <p className="modal-subtitle">
+              {authMode === "login"
+                ? "Welcome back. Sign in to your account."
+                : "Create your free account. Takes 30 seconds."}
+            </p>
+          </>
+        )}
         <form className="expense-form" onSubmit={handleAuthSubmit}>
           {authMode === "signup" && (
             <label>
@@ -281,7 +519,7 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
               />
             </label>
           )}
-          <label>
+          {authMode !== "reset" && <label>
             Email Address
             <input
               type="email"
@@ -289,22 +527,25 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
               onChange={(e) => setAuthEmail(e.target.value)}
               placeholder="you@example.com"
             />
-          </label>
-          <label>
-            Password
+          </label>}
+          {authMode !== "forgot" && <label>
+            {authMode === "reset" ? "New password" : "Password"}
             <input
               type="password"
               value={authPassword}
               onChange={(e) => setAuthPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder={authMode === "reset" ? "At least 8 characters" : "••••••••"}
             />
-          </label>
+            {authMode === "reset" && <span className="password-hint">Use at least 8 characters for better protection.</span>}
+          </label>}
           {authError && <p className="error-text">{authError}</p>}
           <button className="primary form-submit" type="submit" disabled={authLoading}>
-            {authLoading ? "Please wait…" : authMode === "login" ? "Sign in" : "Create account"}
+            {authLoading ? "Please wait…" : authMode === "login" ? "Sign in" : authMode === "signup" ? "Create account" : authMode === "forgot" ? "Send recovery link" : "Reset password"}
           </button>
         </form>
-        <p className="fine-print">🔒 Secure sign-in · Your data stays private</p>
+        {authMode === "login" && <button type="button" className="text-action auth-secondary-action" onClick={() => setAuthMode("forgot")}>Forgot password?</button>}
+        {(authMode === "forgot" || authMode === "reset") && <button type="button" className="text-action auth-secondary-action" onClick={() => setAuthMode("login")}>Back to sign in</button>}
+        <p className="fine-print"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg> {authMode === "reset" ? "Encrypted password update" : authMode === "forgot" ? "Private recovery" : "Secure sign-in"} <span aria-hidden="true">·</span> Your data stays private</p>
       </div>
     </div>
   );
@@ -312,11 +553,27 @@ function AuthModal({ mode, onClose, onSuccess, notify }) {
 
 function App() {
   const [transactions, setTransactions] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [transfers, setTransfers] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [recurringTransactions, setRecurringTransactions] = useState([]);
+  const [transferForm, setTransferForm] = useState({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
+  const [budgetForm, setBudgetForm] = useState({ category: "Food", amount: "", month: "" });
+  const [recurringForm, setRecurringForm] = useState({ title: "", category: "Bills", amount: "", type: "expense", frequency: "monthly", accountId: "", startDate: defaultDate });
+  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [editingAccountId, setEditingAccountId] = useState(null);
+  const [accountForm, setAccountForm] = useState({ name: "", type: "bank", balance: "", creditLimit: "", billingCycleDay: "", statementDay: "", paymentDueDay: "" });
+  const [accountTypeMenuOpen, setAccountTypeMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
+  const [profileName, setProfileName] = useState("");
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [securityCurrentPassword, setSecurityCurrentPassword] = useState("");
+  const [securityMessage, setSecurityMessage] = useState("");
+  const [securityLoading, setSecurityLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -346,6 +603,7 @@ function App() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [transactionFilters, setTransactionFilters] = useState({ account: "", category: "", type: "", from: "", to: "", min: "", max: "", sort: "date-desc" });
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
@@ -355,16 +613,28 @@ function App() {
     amount: "",
     type: "expense",
     date: defaultDate,
+    accountId: "",
+    notes: "",
   });
+  const [editingTransactionId, setEditingTransactionId] = useState(null);
+  const transactionIdempotencyKeyRef = useRef(null);
   const [goalContribMode, setGoalContribMode] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [goalContribAmount, setGoalContribAmount] = useState("");
+  const [goalMenuOpen, setGoalMenuOpen] = useState(false);
 
   const [storyPeriod, setStoryPeriod] = useState("monthly");
   const storyCardRef = useRef(null);
   const [storyDownloading, setStoryDownloading] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState("monthly");
+  const [reportAnchor, setReportAnchor] = useState(() => new Date().toISOString().slice(0, 10));
 
   const isAuthenticated = Boolean(user);
+
+  useEffect(() => {
+    setProfileName(user?.name || "");
+  }, [user]);
 
   const notify = (message, type = "success") => {
     setToast({ message, type, id: Date.now() });
@@ -391,6 +661,7 @@ function App() {
       setShowForm(true);
     } else {
       setShowForm(false);
+      setShowAccountForm(false);
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -490,6 +761,26 @@ function App() {
     initAuth();
   }, []);
 
+  useEffect(() => {
+    const resetToken = new URLSearchParams(window.location.search).get("reset_password");
+    if (resetToken) {
+      setAuthModalMode("reset");
+      setShowAuthModal(true);
+    }
+    const token = new URLSearchParams(window.location.search).get("verify_email");
+    if (!token) return;
+    apiRequest("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      notify(response.ok ? data.message || "Email verified." : data.error || "Verification link is invalid.", response.ok ? "success" : "error");
+      window.history.replaceState({}, "", window.location.pathname);
+    }).catch(() => {
+      notify("Could not verify email right now.", "error");
+    });
+  }, []);
+
 
 
   useEffect(() => {
@@ -545,6 +836,10 @@ function App() {
     const loadDashboard = async () => {
       if (!user) {
         setTransactions([]);
+        setAccounts([]);
+        setTransfers([]);
+        setBudgets([]);
+        setRecurringTransactions([]);
         setGoals([]);
         setGoalContributions({});
         setDataLoading(false);
@@ -552,19 +847,28 @@ function App() {
       }
       setDataLoading(true);
       try {
-        const [txRes, goalsRes, contribRes] = await Promise.all([
+        const [txRes, accountsRes, goalsRes, contribRes, transfersRes, budgetsRes, recurringRes] = await Promise.all([
           apiRequest("/transactions"),
+          apiRequest("/accounts"),
           apiRequest("/goals"),
           apiRequest("/goals/contributions"),
+          apiRequest("/transfers"),
+          apiRequest(`/budgets?month=${selectedMonth}`),
+          apiRequest("/recurring-transactions"),
         ]);
-        if (!txRes.ok || !goalsRes.ok || !contribRes.ok) {
+        if (!txRes.ok || !accountsRes.ok || !goalsRes.ok || !contribRes.ok || !transfersRes.ok || !budgetsRes.ok || !recurringRes.ok) {
           throw new Error("Unable to load dashboard data");
         }
-        const [txData, goalsData, contribData] = await Promise.all([
-          txRes.json(), goalsRes.json(), contribRes.json(),
+        const [txData, accountsData, goalsData, contribData, transfersData, budgetsData, recurringData] = await Promise.all([
+          txRes.json(), accountsRes.json(), goalsRes.json(), contribRes.json(),
+          transfersRes.json(), budgetsRes.json(), recurringRes.json(),
         ]);
         if (!active) return;
         setTransactions(Array.isArray(txData) ? txData : []);
+        setAccounts(Array.isArray(accountsData) ? accountsData : []);
+        setTransfers(Array.isArray(transfersData) ? transfersData : []);
+        setBudgets(Array.isArray(budgetsData) ? budgetsData : []);
+        setRecurringTransactions(Array.isArray(recurringData) ? recurringData : []);
         setGoals(Array.isArray(goalsData) ? goalsData : []);
         const contributionMap = {};
         (Array.isArray(contribData) ? contribData : []).forEach((item) => {
@@ -575,6 +879,10 @@ function App() {
       } catch {
         if (active) {
           setTransactions([]);
+          setAccounts([]);
+          setTransfers([]);
+          setBudgets([]);
+          setRecurringTransactions([]);
           setGoals([]);
           setGoalContributions({});
           setToast({ type: "error", message: "Could not load your data. Please refresh or sign in again." });
@@ -585,33 +893,22 @@ function App() {
     };
     loadDashboard();
     return () => { active = false; };
-  }, [user]);
+  }, [user, selectedMonth]);
 
-  const normalizedTransactions = useMemo(
-    () =>
-      transactions.map((entry) => {
-        const inferredType =
-          entry.type ??
-          (entry.category === "Investment" ? "investment" : entry.amount >= 0 ? "income" : "expense");
-        const safeAmount = inferredType === "expense" ? -Math.abs(entry.amount) : Math.abs(entry.amount);
-        return { ...entry, type: inferredType, amount: safeAmount };
-      }),
-    [transactions]
+  const normalizedTransactions = useMemo(() => normalizeTransactions(transactions), [transactions]);
+
+  const totals = useMemo(() => calculateTotals(normalizedTransactions), [normalizedTransactions]);
+  const availableBalance = useMemo(
+    () => accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0),
+    [accounts],
   );
-
-  const totals = useMemo(() => {
-    const balance = normalizedTransactions.reduce((sum, e) => sum + e.amount, 0);
-    const spend = normalizedTransactions
-      .filter((e) => e.amount < 0 && e.type !== "investment")
-      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-    const income = normalizedTransactions
-      .filter((e) => e.type === "income")
-      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-    const investment = normalizedTransactions
-      .filter((e) => e.type === "investment")
-      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-    return { balance, spend, income, investment };
-  }, [normalizedTransactions]);
+  const upcomingPayments = useMemo(
+    () => recurringTransactions
+      .filter((item) => !item.paused && item.type === "expense")
+      .sort((a, b) => new Date(a.nextOccurrence) - new Date(b.nextOccurrence))
+      .slice(0, 3),
+    [recurringTransactions],
+  );
 
   const categoryBreakdown = useMemo(() => {
     const totalsByCategory = {};
@@ -702,10 +999,13 @@ function App() {
       const { start, end, label } = periodRange(g.period);
       const spent = sumSpendForCategory(g.category, start, end);
       const contributed = goalContributions[g._id] || 0;
-      const total = spent + contributed;
       const target = Number(g.amount) || 0;
-      const progress = target ? Math.min((total / target) * 100, 100) : 0;
-      return { ...g, spent: total, target, progress, periodLabel: label, contributed };
+      const progressData = calculateGoalProgress({
+        categorySpend: spent,
+        contribution: contributed,
+        target,
+      });
+      return { ...g, spent: progressData.total, target, progress: progressData.progress, periodLabel: label, contributed };
     });
   }, [goals, goalContributions, normalizedTransactions, selectedMonth]);
 
@@ -883,17 +1183,33 @@ function App() {
 
   const filteredTransactions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return normalizedTransactions;
-    return normalizedTransactions.filter((item) => {
+    const result = normalizedTransactions.filter((item) => {
       const amt = formatCurrency.format(Math.abs(item.amount)).toLowerCase();
+      const date = String(item.date || "").slice(0, 10);
+      const accountId = item.account?._id || item.account || "";
       return (
+        (!query || (
         item.title.toLowerCase().includes(query) ||
         item.category.toLowerCase().includes(query) ||
         formatDate(item.date).toLowerCase().includes(query) ||
         amt.includes(query)
+        )) &&
+        (!transactionFilters.account || String(accountId) === transactionFilters.account) &&
+        (!transactionFilters.category || item.category === transactionFilters.category) &&
+        (!transactionFilters.type || item.type === transactionFilters.type) &&
+        (!transactionFilters.from || date >= transactionFilters.from) &&
+        (!transactionFilters.to || date <= transactionFilters.to) &&
+        (!transactionFilters.min || Math.abs(item.amount) >= Number(transactionFilters.min)) &&
+        (!transactionFilters.max || Math.abs(item.amount) <= Number(transactionFilters.max))
       );
     });
-  }, [normalizedTransactions, searchQuery]);
+    return result.sort((a, b) => {
+      if (transactionFilters.sort === "amount-desc") return Math.abs(b.amount) - Math.abs(a.amount);
+      if (transactionFilters.sort === "amount-asc") return Math.abs(a.amount) - Math.abs(b.amount);
+      if (transactionFilters.sort === "date-asc") return new Date(a.date) - new Date(b.date);
+      return new Date(b.date) - new Date(a.date);
+    });
+  }, [normalizedTransactions, searchQuery, transactionFilters]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
 
@@ -917,6 +1233,179 @@ function App() {
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
+  const resetAccountForm = () => {
+    setAccountForm({ name: "", type: "bank", balance: "", creditLimit: "", billingCycleDay: "", statementDay: "", paymentDueDay: "" });
+    setEditingAccountId(null);
+  };
+
+  const handleSaveAccount = async (event) => {
+    event.preventDefault();
+    const name = accountForm.name.trim();
+    const balance = Number(accountForm.balance);
+    const creditLimit = accountForm.creditLimit === "" ? null : Number(accountForm.creditLimit);
+    if (!name || !Number.isFinite(balance) || (creditLimit !== null && (!Number.isFinite(creditLimit) || creditLimit < 0))) {
+      notify("Enter a name and a valid balance.", "error");
+      return;
+    }
+    const payload = { ...accountForm, name, balance, creditLimit };
+    try {
+      const response = await apiRequest(editingAccountId ? `/accounts/${editingAccountId}` : "/accounts", {
+        method: editingAccountId ? "PUT" : "POST",
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error("Account save failed");
+      const saved = await response.json();
+      setAccounts((prev) => editingAccountId
+        ? prev.map((item) => item._id === editingAccountId ? saved : item)
+        : [saved, ...prev]);
+      notify(editingAccountId ? "Account updated." : "Account added.");
+      resetAccountForm();
+      setShowAccountForm(false);
+    } catch {
+      notify("Could not save this account. Please try again.", "error");
+    }
+  };
+
+  const handleEditAccount = (account) => {
+    setEditingAccountId(account._id);
+    setAccountForm({
+      name: account.name || "",
+      type: account.type || "bank",
+      balance: String(account.balance ?? ""),
+      creditLimit: account.creditLimit === null || account.creditLimit === undefined ? "" : String(account.creditLimit),
+      billingCycleDay: account.billingCycleDay ?? "",
+      statementDay: account.statementDay ?? "",
+      paymentDueDay: account.paymentDueDay ?? "",
+    });
+    setShowAccountForm(true);
+  };
+
+  const handleRemoveAccount = async (account) => {
+    if (!window.confirm(`Remove ${account.name}? Transactions will remain but won't use an account.`)) return;
+    try {
+      const response = await apiRequest(`/accounts/${account._id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Account delete failed");
+      setAccounts((prev) => prev.filter((item) => item._id !== account._id));
+      setTransactions((prev) => prev.map((item) => item.account === account._id ? { ...item, account: undefined } : item));
+      notify("Account removed.");
+    } catch {
+      notify("Could not remove this account.", "error");
+    }
+  };
+
+  const startTransactionEdit = (transaction) => {
+    setEditingTransactionId(transaction._id);
+    setFormState({
+      title: transaction.title || "",
+      category: transaction.category || "Other",
+      amount: String(Math.abs(transaction.amount || 0)),
+      type: transaction.type || "expense",
+      date: String(transaction.date || defaultDate).slice(0, 10),
+      accountId: transaction.account?._id || transaction.account || "",
+      notes: transaction.notes || "",
+    });
+    setFormFeedback("");
+    setShowForm(true);
+    setMobileView("add");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleRemoveTransaction = async (transaction) => {
+    if (!window.confirm(`Delete "${transaction.title}"?`)) return;
+    try {
+      const response = await apiRequest(`/transactions/${transaction._id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Transaction delete failed");
+      setTransactions((prev) => prev.filter((item) => item._id !== transaction._id));
+      notify("Transaction deleted.");
+    } catch {
+      notify("Could not delete this transaction.", "error");
+    }
+  };
+
+  const duplicateTransaction = (transaction) => {
+    setEditingTransactionId(null);
+    setFormState({
+      title: `${transaction.title} (copy)`,
+      category: transaction.category || "Other",
+      amount: String(Math.abs(transaction.amount || 0)),
+      type: transaction.type || "expense",
+      date: defaultDate,
+      accountId: transaction.account?._id || transaction.account || "",
+      notes: transaction.notes || "",
+    });
+    setFormFeedback("");
+    setShowForm(true);
+    setMobileView("add");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCreateTransfer = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await apiRequest("/transfers", {
+        method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify(transferForm),
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Transfer failed");
+      const transfer = await response.json();
+      setTransfers((items) => [transfer, ...items]);
+      const accountsResponse = await apiRequest("/accounts");
+      if (accountsResponse.ok) setAccounts(await accountsResponse.json());
+      setTransferForm({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
+      notify("Transfer completed.");
+    } catch (error) {
+      notify(error.message || "Could not complete transfer.", "error");
+    }
+  };
+
+  const handleSaveBudget = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await apiRequest("/budgets", { method: "POST", body: JSON.stringify({ ...budgetForm, month: budgetForm.month || selectedMonth }) });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Budget save failed");
+      const saved = await response.json();
+      setBudgets((items) => [saved, ...items.filter((item) => item._id !== saved._id)]);
+      notify("Budget saved.");
+    } catch (error) {
+      notify(error.message || "Could not save budget.", "error");
+    }
+  };
+
+  const handleSaveRecurring = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await apiRequest("/recurring-transactions", { method: "POST", body: JSON.stringify(recurringForm) });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Recurring transaction failed");
+      const saved = await response.json();
+      setRecurringTransactions((items) => [saved, ...items]);
+      setRecurringForm({ title: "", category: "Bills", amount: "", type: "expense", frequency: "monthly", accountId: "", startDate: defaultDate });
+      notify("Recurring transaction scheduled.");
+    } catch (error) {
+      notify(error.message || "Could not schedule recurring transaction.", "error");
+    }
+  };
+
+  const handleDeleteTransfer = async (transfer) => {
+    try {
+      const response = await apiRequest(`/transfers/${transfer._id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Transfer delete failed");
+      setTransfers((items) => items.filter((item) => item._id !== transfer._id));
+      const accountsResponse = await apiRequest("/accounts");
+      if (accountsResponse.ok) setAccounts(await accountsResponse.json());
+      notify("Transfer deleted.");
+    } catch { notify("Could not delete transfer.", "error"); }
+  };
+
+  const handleToggleRecurring = async (item) => {
+    try {
+      const response = await apiRequest(`/recurring-transactions/${item._id}`, { method: "PATCH", body: JSON.stringify({ paused: !item.paused }) });
+      if (!response.ok) throw new Error("Recurring update failed");
+      const updated = await response.json();
+      setRecurringTransactions((items) => items.map((entry) => entry._id === updated._id ? updated : entry));
+    } catch { notify("Could not update recurring transaction.", "error"); }
+  };
+
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
     setCurrentPage(1);
@@ -927,8 +1416,95 @@ function App() {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } finally {
-      localStorage.removeItem("token");
       setUser(null);
+    }
+  };
+
+  const handleProfileSave = async (event) => {
+    event.preventDefault();
+    setSecurityLoading(true);
+    try {
+      const response = await apiRequest("/profile", {
+        method: "PUT",
+        body: JSON.stringify({ name: profileName.trim() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not update profile.");
+      setUser(data.user);
+      setSecurityMessage("Profile updated.");
+      notify("Profile updated.");
+    } catch (error) {
+      setSecurityMessage(error.message);
+      notify(error.message, "error");
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (event) => {
+    event.preventDefault();
+    setSecurityLoading(true);
+    try {
+      const response = await apiRequest("/profile/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: securityCurrentPassword, newPassword: securityPassword }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not change password.");
+      setSecurityCurrentPassword("");
+      setSecurityPassword("");
+      setSecurityMessage(data.message);
+      notify(data.message, "info");
+      setUser(null);
+    } catch (error) {
+      setSecurityMessage(error.message);
+      notify(error.message, "error");
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
+  const handleDataExport = async () => {
+    try {
+      const response = await apiRequest("/profile/export");
+      if (!response.ok) throw new Error("Could not export personal data.");
+      const data = await response.json();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      link.download = "expnse-personal-data.json";
+      link.click();
+      URL.revokeObjectURL(link.href);
+      notify("Personal data export downloaded.");
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  };
+
+  const handleAccountDeletion = async () => {
+    const password = window.prompt("Enter your password to permanently delete your Expnse account.");
+    if (!password || !window.confirm("This permanently deletes your profile and financial data. Continue?")) return;
+    try {
+      const response = await apiRequest("/profile", {
+        method: "DELETE",
+        body: JSON.stringify({ password }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not delete account.");
+      setUser(null);
+      notify("Your account and personal data were deleted.", "info");
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      const response = await apiRequest("/auth/resend-verification", { method: "POST" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not send verification email.");
+      notify(data.message, "info");
+    } catch (error) {
+      notify(error.message, "error");
     }
   };
 
@@ -976,6 +1552,11 @@ function App() {
 
   const handleInstallApp = async () => {
     if (isAppInstalled || installingPwa) return;
+    if (!user) {
+      notify("Create an account first to install Expnse on your device.", "info");
+      openAuth("signup");
+      return;
+    }
     if (!deferredInstallPrompt) {
       notify(
         /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -1002,8 +1583,62 @@ function App() {
   const formatPlainAmount = (value) =>
     new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
+  const getReportRange = () => {
+    const anchor = new Date(`${reportAnchor}T12:00:00`);
+    if (Number.isNaN(anchor.getTime())) return null;
+    if (reportPeriod === "yearly") {
+      const year = Number(reportAnchor.slice(0, 4));
+      return {
+        start: new Date(year, 0, 1),
+        end: new Date(year, 11, 31, 23, 59, 59, 999),
+        label: String(year),
+      };
+    }
+    if (reportPeriod === "weekly") {
+      const start = new Date(anchor);
+      const day = start.getDay();
+      start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      return { start, end, label: `${formatDate(start)} – ${formatDate(end)}` };
+    }
+    const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
+    return {
+      start,
+      end,
+      label: start.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+    };
+  };
+
   const handleExport = () => {
-    if (!normalizedTransactions.length) return;
+    const range = getReportRange();
+    if (!range) {
+      notify("Choose a valid report period.", "error");
+      return;
+    }
+    const reportTransactions = normalizedTransactions.filter((entry) => {
+      const date = new Date(entry.date);
+      return !Number.isNaN(date.getTime()) && date >= range.start && date <= range.end;
+    });
+    if (!reportTransactions.length) {
+      notify(`No transactions found for ${range.label}.`, "info");
+      return;
+    }
+    setShowReportModal(false);
+    const reportTotals = calculateTotals(reportTransactions);
+    const reportSavingsRate = reportTotals.income
+      ? Math.round(((reportTotals.income - reportTotals.spend) / reportTotals.income) * 100)
+      : 0;
+    const spendByCategory = reportTransactions
+      .filter((entry) => entry.type === "expense")
+      .reduce((result, entry) => {
+        const category = entry.category || "Other";
+        result[category] = (result[category] || 0) + Math.abs(entry.amount);
+        return result;
+      }, {});
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -1020,7 +1655,7 @@ function App() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(180, 180, 200);
-    doc.text("Financial Summary Report", marginX + 8, 42);
+    doc.text(`${range.label} · Financial Summary Report`, marginX + 8, 42);
     const reportDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
     doc.text(`Generated: ${reportDate}`, pageWidth - marginX, 42, { align: "right" });
 
@@ -1029,13 +1664,14 @@ function App() {
     doc.setFontSize(10);
     doc.setTextColor(60);
     doc.text(`Account: ${user?.name || "User"}`, marginX, cursorY);
+    doc.text(`Period: ${range.label}`, pageWidth - marginX, cursorY, { align: "right" });
 
     cursorY += 20;
     const summaryCards = [
-      { label: "Total Income", value: `+INR ${formatPlainAmount(totals.income)}`, color: [34, 197, 94] },
-      { label: "Total Investment", value: `INR ${formatPlainAmount(totals.investment)}`, color: [167, 139, 250] },
-      { label: "Total Spend", value: `-INR ${formatPlainAmount(totals.spend)}`, color: [252, 165, 165] },
-      { label: "Net Balance", value: `INR ${formatPlainAmount(totals.balance)}`, color: [56, 189, 248] },
+      { label: "Income", value: `+INR ${formatPlainAmount(reportTotals.income)}`, color: [34, 197, 94] },
+      { label: "Invested", value: `INR ${formatPlainAmount(reportTotals.investment)}`, color: [167, 139, 250] },
+      { label: "Spending", value: `-INR ${formatPlainAmount(reportTotals.spend)}`, color: [252, 165, 165] },
+      { label: "Net Balance", value: `INR ${formatPlainAmount(reportTotals.balance)}`, color: [56, 189, 248] },
     ];
     const cardWidth = (pageWidth - marginX * 2 - 30) / 4;
     summaryCards.forEach((card, i) => {
@@ -1055,13 +1691,54 @@ function App() {
     });
 
     cursorY += 70;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(75);
+    doc.text(`Savings rate: ${reportSavingsRate}%  ·  Transactions: ${reportTransactions.length}`, marginX, cursorY);
+    cursorY += 24;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(20, 24, 36);
+    doc.text("Spending by category", marginX, cursorY);
+    const categoryRows = Object.entries(spendByCategory)
+      .sort(([, a], [, b]) => b - a)
+      .map(([category, amount]) => [category, `INR ${formatPlainAmount(amount)}`]);
+    autoTable(doc, {
+      startY: cursorY + 8,
+      head: [["Category", "Amount"]],
+      body: categoryRows.length ? categoryRows : [["No spending", "INR 0.00"]],
+      styles: { fontSize: 8, cellPadding: 5, textColor: 40 },
+      headStyles: { fillColor: [249, 115, 22], textColor: 255 },
+      columnStyles: { 1: { halign: "right", fontStyle: "bold" } },
+      margin: { left: marginX, right: pageWidth / 2 + 8 },
+    });
+    cursorY = (doc.lastAutoTable?.finalY || cursorY + 30) + 22;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(20, 24, 36);
+    doc.text("Account balances", marginX, cursorY);
+    const accountRows = accounts.map((account) => [
+      account.name,
+      account.type?.replace("_", " ") || "Account",
+      `INR ${formatPlainAmount(Number(account.balance) || 0)}`,
+    ]);
+    autoTable(doc, {
+      startY: cursorY + 8,
+      head: [["Account", "Type", "Current balance"]],
+      body: accountRows.length ? accountRows : [["No accounts", "—", "INR 0.00"]],
+      styles: { fontSize: 8, cellPadding: 5, textColor: 40 },
+      headStyles: { fillColor: [20, 24, 36], textColor: 255 },
+      columnStyles: { 2: { halign: "right", fontStyle: "bold" } },
+      margin: { left: marginX, right: marginX },
+    });
+    cursorY = (doc.lastAutoTable?.finalY || cursorY + 30) + 22;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(20, 24, 36);
     doc.text("Transaction History", marginX, cursorY);
     cursorY += 8;
 
-    const tableBody = normalizedTransactions.map((entry) => [
+    const tableBody = reportTransactions.map((entry) => [
       formatDate(entry.date),
       entry.title,
       entry.category,
@@ -1092,10 +1769,10 @@ function App() {
       },
     });
 
-    doc.save("expnse-report.pdf");
+    doc.save(`expnse-${reportPeriod}-report-${reportAnchor}.pdf`);
   };
 
-  // ── Submit transaction — uses apiRequest so token is sent via header ──
+  // ── Submit transaction ──
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormFeedback("");
@@ -1114,24 +1791,41 @@ function App() {
       amount: parsedAmount,
       type: formState.type,
       date: formState.date,
+      accountId: formState.accountId || undefined,
+      notes: formState.notes.trim(),
     };
     try {
       setFormSubmitting(true);
-      const response = await apiRequest("/transactions", {
-        method: "POST",
+      if (!editingTransactionId && !transactionIdempotencyKeyRef.current) {
+        transactionIdempotencyKeyRef.current = globalThis.crypto?.randomUUID?.()
+          || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const response = await apiRequest(editingTransactionId ? `/transactions/${editingTransactionId}` : "/transactions", {
+        method: editingTransactionId ? "PUT" : "POST",
         body: JSON.stringify(payload),
+        headers: editingTransactionId
+          ? {}
+          : { "Idempotency-Key": transactionIdempotencyKeyRef.current },
       });
       if (!response.ok) throw new Error("Failed");
       const saved = await response.json();
-      setTransactions((prev) => [saved, ...prev]);
-      notify("Transaction saved successfully.");
+      setTransactions((prev) => editingTransactionId
+        ? prev.map((item) => item._id === editingTransactionId ? saved : item)
+        : [saved, ...prev]);
+      if (formState.accountId || editingTransactionId) {
+        const accountsResponse = await apiRequest("/accounts");
+        if (accountsResponse.ok) setAccounts(await accountsResponse.json());
+      }
+      notify(editingTransactionId ? "Transaction updated successfully." : "Transaction saved successfully.");
     } catch {
       notify("Transaction could not be saved. Check your connection and try again.", "error");
       return;
     } finally {
       setFormSubmitting(false);
     }
-    setFormState((prev) => ({ ...prev, title: "", amount: "", type: "expense", date: defaultDate }));
+    setFormState((prev) => ({ ...prev, title: "", amount: "", type: "expense", date: defaultDate, accountId: "", notes: "" }));
+    setEditingTransactionId(null);
+    transactionIdempotencyKeyRef.current = null;
     setGoalContribMode(false);
     setSelectedGoalId("");
     setGoalContribAmount("");
@@ -1181,7 +1875,13 @@ if (authLoading) {
 
   return (
     <div className="app dashboard-app" data-mobile-view={mobileView}>
-      {toast && <div className={`app-toast ${toast.type}`} role="status" aria-live="polite"><span>{toast.type === "error" ? "!" : "✓"}</span>{toast.message}<button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
+      {toast && <div className={`app-toast ${toast.type}`} role="status" aria-live="polite">
+        <span>{toast.type === "error" ? "!" : toast.type === "info" ? "i" : "✓"}</span>
+        <strong>{toast.type === "error" ? "Something went wrong" : toast.type === "info" ? "Heads up" : "All set"}</strong>
+        <p>{toast.message}</p>
+        <button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button>
+        <i className="app-toast-progress" aria-hidden="true" />
+      </div>}
       {dataLoading && isAuthenticated && <div className="data-loading-overlay" role="status" aria-live="polite" aria-label="Loading your dashboard"><div className="data-loading-card"><img src={logo} alt="Expnse" className="data-loading-logo" /><div className="data-loading-spinner" aria-hidden="true" /><strong>Loading your dashboard</strong></div></div>}
       {showAuthModal && (
         <AuthModal
@@ -1193,6 +1893,62 @@ if (authLoading) {
             setShowAuthModal(false);
           }}
         />
+      )}
+      {showReportModal && (
+        <div className="modal-backdrop" onClick={(event) => event.target === event.currentTarget && setShowReportModal(false)}>
+          <div className="modal-card report-modal-card">
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">PDF Export</p>
+                <h2>Build your report</h2>
+              </div>
+              <button className="modal-close" type="button" onClick={() => setShowReportModal(false)} aria-label="Close">×</button>
+            </div>
+            <p className="modal-subtitle">Download your balance, investments, spending, accounts, and transactions in one polished report.</p>
+            <div className="report-period-options">
+              {[
+                ["monthly", "Monthly", "Choose a month"],
+                ["weekly", "Weekly", "Choose any date"],
+                ["yearly", "Yearly", "Choose a year"],
+              ].map(([value, label, description]) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={`report-period-option ${reportPeriod === value ? "active" : ""}`}
+                  onClick={() => setReportPeriod(value)}
+                >
+                  <strong>{label}</strong>
+                  <span>{description}</span>
+                </button>
+              ))}
+            </div>
+            <label className="report-date-label">
+              {reportPeriod === "monthly" ? "Report month" : reportPeriod === "weekly" ? "Date in report week" : "Report year"}
+              {reportPeriod === "yearly" ? (
+                <input
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  value={reportAnchor.slice(0, 4)}
+                  onChange={(event) => setReportAnchor(`${event.target.value}-01-01`)}
+                />
+              ) : (
+                <input
+                  type={reportPeriod === "monthly" ? "month" : "date"}
+                  value={reportPeriod === "monthly" ? reportAnchor.slice(0, 7) : reportAnchor}
+                  onChange={(event) => setReportAnchor(reportPeriod === "monthly" ? `${event.target.value}-01` : event.target.value)}
+                />
+              )}
+            </label>
+            <div className="report-includes">
+              <span>Included</span>
+              <p>Summary totals · savings rate · category breakdown · account balances · full transaction history</p>
+            </div>
+            <button className="primary form-submit" type="button" onClick={handleExport}>
+              Download {reportPeriod} PDF
+            </button>
+          </div>
+        </div>
       )}
 
       {!isAuthenticated ? (
@@ -1238,7 +1994,7 @@ if (authLoading) {
               </div>
               <div className="nav-actions">
                 <button className="ghost" onClick={() => openAuth("login")}>Login</button>
-                <button className="ghost install-nav-button" onClick={handleInstallApp} disabled={isAppInstalled || installingPwa}>{isAppInstalled ? "Installed" : "Install app"}</button>
+                {!isAppInstalled && <button className="ghost install-nav-button" onClick={handleInstallApp} disabled={installingPwa}>{installingPwa ? "Installing…" : "Install app"}</button>}
                 <button className="primary" onClick={() => openAuth("signup")}>Get started free</button>
               </div>
             </div>
@@ -1389,14 +2145,14 @@ if (authLoading) {
               <p className="eyebrow">PDF Export</p>
               <h2>Your finances, beautifully printed.</h2>
               <p className="muted export-desc">
-                Download a professional, print-ready PDF report of all your transactions,
-                totals, and spending breakdown — in one click. Perfect for tax season,
-                financial reviews, or just staying organized.
+                Download a professional, print-ready PDF report by month, week, or year —
+                with your balance, investments, spending, account balances, and complete
+                transaction history in one place.
               </p>
               <ul className="export-features-list">
-                <li><span className="export-check">✓</span> Full transaction history</li>
-                <li><span className="export-check">✓</span> Income, spend &amp; investment totals</li>
-                <li><span className="export-check">✓</span> Category-wise breakdown</li>
+                <li><span className="export-check">✓</span> Monthly, weekly &amp; yearly periods</li>
+                <li><span className="export-check">✓</span> Balance, spending &amp; investment totals</li>
+                <li><span className="export-check">✓</span> Category and account breakdowns</li>
                 <li><span className="export-check">✓</span> Branded, paginated report</li>
               </ul>
               <button className="primary" onClick={() => openAuth("signup")}>
@@ -1493,10 +2249,22 @@ if (authLoading) {
                       <img src={logo} alt="Expnse" />
                     </div>
                     <div>
-                      <p className="msl-brand">Expnse</p>
+                      <p className="msl-brand">Your Money Story</p>
                       <p className="msl-period">📊 Monthly Money Story · March 2026</p>
                     </div>
-                    <div className="msl-badge">LIVE</div>
+                    <div className="msl-badge">READY</div>
+                  </div>
+
+                  <div className="msl-card-intro">
+                    <div>
+                      <span className="msl-card-kicker">March snapshot</span>
+                      <strong>Quiet progress<br /><em>adds up.</em></strong>
+                    </div>
+                    <div className="msl-mini-chart" aria-hidden="true">
+                      {[32, 45, 37, 58, 52, 72, 84].map((height, index) => (
+                        <i key={index} style={{ height: `${height}%` }} />
+                      ))}
+                    </div>
                   </div>
 
                   <div className="msl-metrics">
@@ -1559,6 +2327,7 @@ if (authLoading) {
                     { icon:"🚀", color:"#f87171", title:"One-tap share",         desc:"Share to Twitter, WhatsApp, LinkedIn or download as a PNG image instantly." },
                   ].map(f => (
                     <div className="msl-feat" key={f.title}>
+                      <span className="msl-feat-number">0{[1, 2, 3, 4][["3 story modes", "Spending Personality", "Savings Rate + bar", "One-tap share"].indexOf(f.title)]}</span>
                       <div className="msl-feat-icon" style={{background:`${f.color}18`, border:`1px solid ${f.color}33`, color:f.color}}>{f.icon}</div>
                       <div>
                         <strong>{f.title}</strong>
@@ -1617,13 +2386,13 @@ if (authLoading) {
                   </div>
                   <strong>Mobile app</strong>
                   <p className="muted">Install on home screen · iOS &amp; Android</p>
-                  <button
+                  {!isAppInstalled && <button
                     className="primary platform-btn platform-btn--mobile"
                     onClick={handleInstallApp}
-                    disabled={installingPwa || isAppInstalled}
+                    disabled={installingPwa}
                   >
-                    {isAppInstalled ? "✓ App installed" : installingPwa ? "Installing…" : "Install on mobile →"}
-                  </button>
+                    {installingPwa ? "Installing…" : "Install on mobile →"}
+                  </button>}
                 </div>
 
                 <div className="platform-card platform-card--desktop dim">
@@ -1706,10 +2475,19 @@ if (authLoading) {
               <h1>
                 <span className="desktop-header-title">Welcome{user?.name ? `, ${user.name}` : ""}.</span>
                 <span className="mobile-header-title">
-                  {mobileView === "notifications" ? "Notifications" : mobileView === "transactions" ? "Transactions" : mobileView === "analytics" ? "Analytics" : mobileView === "add" ? "Add transaction" : "Overview"}
+                  {mobileView === "notifications" ? "Notifications" : mobileView === "accounts" ? "Accounts" : mobileView === "settings" ? "Settings" : mobileView === "transactions" ? "Transactions" : mobileView === "analytics" ? "Analytics" : mobileView === "add" ? "Add transaction" : "Overview"}
                 </span>
               </h1>
             </div>
+            {!isAppInstalled && <button
+              type="button"
+              className="dashboard-install-action"
+              onClick={handleInstallApp}
+              disabled={installingPwa}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m-4-4 4 4 4-4M5 18v2h14v-2" /></svg>
+              <span>{installingPwa ? "Installing…" : "Install app"}</span>
+            </button>}
             <button
               type="button"
               className="mobile-header-button mobile-notification-button"
@@ -1758,16 +2536,26 @@ if (authLoading) {
                         <span className="profile-action-copy"><strong>Add transaction</strong><small>Record income, expense or investment</small></span>
                         <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
-                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { handleExport(); setShowProfileMenu(false); }} disabled={!normalizedTransactions.length}>
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { openMobileView("accounts"); setShowProfileMenu(false); }}>
+                        <span className="profile-action-icon account"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 4l9 6" /><path d="M5 10v9M9 10v9M15 10v9M19 10v9M3 20h18" /></svg></span>
+                        <span className="profile-action-copy"><strong>Manage accounts</strong><small>Update banks, cards, cash and wallets</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                      </button>
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { openMobileView("settings"); setShowProfileMenu(false); }}>
+                        <span className="profile-action-icon account"><DrawerIcon name="settings" /></span>
+                        <span className="profile-action-copy"><strong>Settings &amp; security</strong><small>Profile, password and privacy controls</small></span>
+                        <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                      </button>
+                      <button className="profile-menu-action" type="button" role="menuitem" onClick={() => { setShowReportModal(true); setShowProfileMenu(false); }} disabled={!normalizedTransactions.length}>
                         <span className="profile-action-icon export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v3h16v-3"/></svg></span>
                         <span className="profile-action-copy"><strong>Export report</strong><small>Download your transactions as PDF</small></span>
                         <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
-                      <button className="profile-menu-action" type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa || isAppInstalled}>
+                      {!isAppInstalled && <button className="profile-menu-action" type="button" role="menuitem" onClick={handleInstallApp} disabled={installingPwa}>
                         <span className="profile-action-icon install"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M10 18h4"/></svg></span>
-                        <span className="profile-action-copy"><strong>{isAppInstalled ? "App installed" : installingPwa ? "Installing..." : "Install app"}</strong><small>{isAppInstalled ? "Ready on your device" : "Add a shortcut to your home screen"}</small></span>
+                        <span className="profile-action-copy"><strong>{installingPwa ? "Installing..." : "Install app"}</strong><small>Add a shortcut to your home screen</small></span>
                         <svg className="profile-action-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-                      </button>
+                      </button>}
                     </div>
                     <div className="profile-menu-divider" />
                     <button className="profile-menu-action profile-logout" type="button" role="menuitem" onClick={() => { handleLogout(); setShowProfileMenu(false); }}>
@@ -1785,21 +2573,27 @@ if (authLoading) {
                 <div className="mobile-drawer-head">
                   <div className="mobile-drawer-brand">
                     <img src={logo} alt="" />
-                    <strong>Expense<br />Manager</strong>
+                    <strong>Expense<br /></strong>
                   </div>
-                  <button type="button" className="mobile-drawer-close" aria-label="Close menu" onClick={() => setShowMobileDrawer(false)}>×</button>
+                  <button type="button" className="mobile-drawer-close" aria-label="Close menu" onClick={() => setShowMobileDrawer(false)}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>
+                  </button>
                 </div>
                 <div className="mobile-drawer-group">
                   <span className="mobile-drawer-label">MAIN</span>
-                  <button type="button" onClick={() => openMobileView("home")}><span>⌂</span>Home</button>
-                  <button type="button" onClick={() => openMobileView("transactions")}><span>☷</span>Transactions</button>
-                  <button type="button" onClick={() => openMobileView("analytics")}><span>▥</span>Statistics</button>
-                  <button type="button" onClick={() => openMobileView("notifications")}><span>♧</span>Notifications</button>
+                  <button type="button" className={mobileView === "home" ? "active" : ""} aria-current={mobileView === "home" ? "page" : undefined} onClick={() => openMobileView("home")}><DrawerIcon name="home" /><span>Home</span></button>
+                  <button type="button" className={mobileView === "transactions" ? "active" : ""} aria-current={mobileView === "transactions" ? "page" : undefined} onClick={() => openMobileView("transactions")}><DrawerIcon name="transactions" /><span>Transactions</span></button>
+                  <button type="button" className={mobileView === "analytics" ? "active" : ""} aria-current={mobileView === "analytics" ? "page" : undefined} onClick={() => openMobileView("analytics")}><DrawerIcon name="analytics" /><span>Statistics</span></button>
+                  <button type="button" className={mobileView === "accounts" ? "active" : ""} aria-current={mobileView === "accounts" ? "page" : undefined} onClick={() => openMobileView("accounts")}><DrawerIcon name="accounts" /><span>Manage accounts</span></button>
+                  <button type="button" className={mobileView === "settings" ? "active" : ""} aria-current={mobileView === "settings" ? "page" : undefined} onClick={() => openMobileView("settings")}><DrawerIcon name="settings" /><span>Settings</span></button>
+                  <button type="button" className={mobileView === "notifications" ? "active" : ""} aria-current={mobileView === "notifications" ? "page" : undefined} onClick={() => openMobileView("notifications")}><DrawerIcon name="notifications" /><span>Notifications</span>{notifications.some((item) => !item.read) && <b className="mobile-drawer-badge">{notifications.filter((item) => !item.read).length > 9 ? "9+" : notifications.filter((item) => !item.read).length}</b>}</button>
                 </div>
                 <div className="mobile-drawer-group">
                   <span className="mobile-drawer-label">PLANNING</span>
-                  <button type="button" onClick={() => openMobileView("analytics")}><span>◷</span>Budget <b>›</b></button>
-                  <button type="button" onClick={() => openMobileView("add")}><span>▣</span>Add transaction</button>
+                  <button type="button" className={mobileView === "analytics" ? "active" : ""} onClick={() => openMobileView("analytics")}><DrawerIcon name="budget" /><span>Budget</span><b className="mobile-drawer-chevron" aria-hidden="true">›</b></button>
+                  <button type="button" className={mobileView === "add" ? "active" : ""} aria-current={mobileView === "add" ? "page" : undefined} onClick={() => openMobileView("add")}><DrawerIcon name="add" /><span>Add transaction</span></button>
+                  <button type="button" onClick={() => { setShowReportModal(true); setShowMobileDrawer(false); }} disabled={!normalizedTransactions.length} aria-label={normalizedTransactions.length ? "Download PDF report" : "Download PDF report unavailable"}><DrawerIcon name="pdf" /><span>Download PDF</span></button>
+                  {!isAppInstalled && <button type="button" onClick={handleInstallApp} disabled={installingPwa}><DrawerIcon name="install" /><span>{installingPwa ? "Installing…" : "Install app"}</span></button>}
                 </div>
                 <div className="mobile-drawer-footer">
                   <button
@@ -1827,10 +2621,10 @@ if (authLoading) {
               <article className="panel">
                 <div className="panel-header">
                   <div>
-                    <h3>Add expense</h3>
+                    <h3>{editingTransactionId ? "Edit transaction" : "Add expense"}</h3>
                     <p className="muted">Log income, spending, or allocate to a goal</p>
                   </div>
-                  <button className="ghost small" onClick={() => { setShowForm(false); setMobileView("home"); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
+                  <button className="ghost small" onClick={() => { setShowForm(false); setEditingTransactionId(null); setMobileView("home"); setGoalContribMode(false); setSelectedGoalId(""); setGoalContribAmount(""); }}>Close</button>
                 </div>
 
                 <div className="entry-mode-switch" role="group" aria-label="Entry mode">
@@ -1889,6 +2683,10 @@ if (authLoading) {
                         <input type="text" name="title" placeholder="e.g. Groceries, salary, cab ride"
                           value={formState.title} onChange={handleChange} required />
                       </label>
+                      <label className="entry-field">
+                        <span>Notes</span>
+                        <input type="text" name="notes" maxLength="500" placeholder="Optional context" value={formState.notes} onChange={handleChange} />
+                      </label>
                       <div className="entry-field category-field">
                         <span id="entry-category-label">Category</span>
                         <div className="category-picker" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setCategoryMenuOpen(false); }} onKeyDown={(event) => { if (event.key === "Escape") setCategoryMenuOpen(false); }}>
@@ -1934,33 +2732,59 @@ if (authLoading) {
                         <span>Transaction date</span>
                         <input type="date" name="date" value={formState.date} onChange={handleChange} required />
                       </label>
+                      <label className="entry-field">
+                        <span>Account (optional)</span>
+                        <IconSelect icon="▣" name="accountId" value={formState.accountId} onChange={handleChange}>
+                          <option value="">No account</option>
+                          {accounts.map((account) => (
+                            <option key={account._id} value={account._id}>
+                              {account.name} · {formatCurrency.format(account.balance)}
+                            </option>
+                          ))}
+                        </IconSelect>
+                      </label>
                     </div>
                     {formFeedback && <p className="form-feedback" role="status">{formFeedback}</p>}
                     <button className="primary form-submit entry-save-button" type="submit" disabled={formSubmitting}>
-                      {formSubmitting ? "Saving entry..." : "Save transaction"}
+                      {formSubmitting ? "Saving entry..." : editingTransactionId ? "Save changes" : "Save transaction"}
                       {!formSubmitting && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>}
                     </button>
                     <p className="entry-form-footnote">Your finances, neatly in one place.</p>
                   </form>
                 ) : (
-                  <form className="expense-form" onSubmit={handleGoalContribSubmit}>
+                  <form className="expense-form goal-contribution-form" onSubmit={handleGoalContribSubmit}>
                     {goals.length === 0 ? (
-                      <p className="empty-state" style={{ padding: "12px 0" }}>
-                        No goals yet. Create a goal first in the <strong>Spending goals</strong> section below.
-                      </p>
+                      <div className="goal-empty-state">
+                        <span className="goal-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></span>
+                        <strong>No goals available</strong>
+                        <p>Create a spending goal first, then come back to allocate money towards it.</p>
+                      </div>
                     ) : (
                       <>
-                        <label>
-                          Select Goal
-                          <select value={selectedGoalId} onChange={(e) => setSelectedGoalId(e.target.value)} required>
-                            <option value="">-- Choose a goal --</option>
-                            {goals.map((g) => (
-                              <option key={g._id} value={g._id}>
-                                {g.name} · {g.category} · Target: {formatCurrency.format(g.amount)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                        <div className="goal-picker-field">
+                          <span>Select goal</span>
+                          <div className="goal-picker" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setGoalMenuOpen(false); }} onKeyDown={(event) => { if (event.key === "Escape") setGoalMenuOpen(false); }}>
+                            <button type="button" className={`goal-picker-trigger${goalMenuOpen ? " open" : ""}`} aria-haspopup="listbox" aria-expanded={goalMenuOpen} onClick={() => setGoalMenuOpen((open) => !open)}>
+                              <span className="goal-picker-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></span>
+                              <span className="goal-picker-current">
+                                <strong>{selectedGoalId ? goals.find((g) => g._id === selectedGoalId)?.name : "Choose a goal"}</strong>
+                                <small>{selectedGoalId ? `${goals.find((g) => g._id === selectedGoalId)?.category} · Target ${formatCurrency.format(goals.find((g) => g._id === selectedGoalId)?.amount || 0)}` : "Select where to allocate this money"}</small>
+                              </span>
+                              <svg className="goal-picker-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                            </button>
+                            {goalMenuOpen && (
+                              <div className="goal-picker-menu" role="listbox" aria-label="Goals">
+                                {goals.map((goal) => (
+                                  <button type="button" role="option" aria-selected={selectedGoalId === goal._id} className={`goal-picker-option${selectedGoalId === goal._id ? " selected" : ""}`} key={goal._id} onClick={() => { setSelectedGoalId(goal._id); setGoalMenuOpen(false); }}>
+                                    <span className="goal-option-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></span>
+                                    <span><strong>{goal.name}</strong><small>{goal.category} · Target {formatCurrency.format(goal.amount)}</small></span>
+                                    {selectedGoalId === goal._id && <svg className="goal-picker-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
 
                         {selectedGoalId && (() => {
                           const goal = goals.find((g) => g._id === selectedGoalId);
@@ -1984,7 +2808,7 @@ if (authLoading) {
                           ) : null;
                         })()}
 
-                        <label>
+                        <label className="goal-amount-field">
                           Amount to allocate (INR)
                           <input
                             type="number"
@@ -2007,7 +2831,8 @@ if (authLoading) {
             </section>
           )}
 
-          <section className="summary-grid dashboard-mobile-section dashboard-mobile-home" aria-label="Financial summary">
+          {mobileView === "home" && !showForm && (
+            <section className="summary-grid dashboard-mobile-section dashboard-mobile-home" aria-label="Financial summary">
             <article className="summary-card">
               <div>
                 <p className="card-label">Total balance</p>
@@ -2016,6 +2841,14 @@ if (authLoading) {
               <div className="summary-detail"><span>Income</span><strong>{formatCurrency.format(totals.income)}</strong></div>
               <div className="summary-detail"><span>Invested</span><strong>{formatCurrency.format(totals.investment)}</strong></div>
               <div className="summary-detail"><span>Spend</span><strong>-{formatCurrency.format(totals.spend)}</strong></div>
+            </article>
+            <article className="summary-card summary-card-highlight">
+              <div>
+                <p className="card-label">Available across accounts</p>
+                <h2>{formatCurrency.format(availableBalance)}</h2>
+              </div>
+              <div className="summary-detail"><span>Accounts</span><strong>{accounts.length}</strong></div>
+              <div className="summary-detail"><span>Cash flow</span><strong>{formatCurrency.format(totals.netCashFlow)}</strong></div>
             </article>
             <article className="summary-card">
               <div>
@@ -2042,7 +2875,7 @@ if (authLoading) {
                 <span>Savings rate</span>
                 <strong>
                   {totals.income
-                    ? `${Math.round(((totals.income - totals.spend) / totals.income) * 100)}%`
+                    ? `${calculateSavingsRate(totals.income, totals.spend)}%`
                     : "0%"}
                 </strong>
               </div>
@@ -2054,7 +2887,8 @@ if (authLoading) {
               </div>
               <div className="summary-detail"><span>Net</span><strong>{formatCurrency.format(totals.balance)}</strong></div>
             </article>
-          </section>
+            </section>
+          )}
 
           <section className="home-insights dashboard-mobile-section dashboard-mobile-home" aria-label="Home insights">
             <article className="panel home-activity-panel">
@@ -2099,6 +2933,15 @@ if (authLoading) {
                 <p>{goals.length ? `You’re tracking ${goals.length} ${goals.length === 1 ? "goal" : "goals"}. Keep your plans moving forward.` : "Give your money a direction by setting your first spending goal."}</p>
                 <button type="button" className="text-action" onClick={() => openMobileView("transactions")}>{goals.length ? "View goals" : "Explore goals"} <span aria-hidden="true">→</span></button>
               </div>
+            </article>
+            <article className="panel upcoming-payments-panel">
+              <div className="panel-header"><div><h3>Upcoming payments</h3><p className="muted">Scheduled recurring expenses</p></div></div>
+              {upcomingPayments.length === 0 ? <p className="empty-state">No upcoming payments scheduled.</p> : upcomingPayments.map((item) => (
+                <div className="upcoming-payment-row" key={item._id}>
+                  <div><strong>{item.title}</strong><span>{formatDate(item.nextOccurrence)}</span></div>
+                  <strong className="amount negative">-{formatCurrency.format(item.amount)}</strong>
+                </div>
+              ))}
             </article>
           </section>
 
@@ -2272,26 +3115,237 @@ if (authLoading) {
             </article>
           </section>
 
+          <section className="accounts-section dashboard-mobile-section dashboard-mobile-accounts" id="accounts-section">
+            <article className="panel accounts-panel">
+              <div className="panel-header">
+                <div>
+                  <h3>My accounts</h3>
+                  <p className="muted">Track balances across your bank, cards, cash and wallets.</p>
+                </div>
+                <button className="primary small" type="button" onClick={() => { resetAccountForm(); setShowAccountForm((open) => !open); }}>
+                  {showAccountForm ? "Close" : "Add account"}
+                </button>
+              </div>
+              {showAccountForm && (
+                <form className="account-form" onSubmit={handleSaveAccount}>
+                  <label>
+                    Account name
+                    <input type="text" value={accountForm.name} onChange={(event) => setAccountForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="e.g. HDFC Salary" required />
+                  </label>
+                  <div className="account-form-field">
+                    <span>Type</span>
+                    <div
+                      className="account-type-picker"
+                      onBlur={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget)) setAccountTypeMenuOpen(false);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") setAccountTypeMenuOpen(false);
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className={`account-type-trigger${accountTypeMenuOpen ? " open" : ""}`}
+                        aria-haspopup="listbox"
+                        aria-expanded={accountTypeMenuOpen}
+                        onClick={() => setAccountTypeMenuOpen((open) => !open)}
+                      >
+                        <AccountIcon type={accountForm.type} />
+                        <span>
+                          <strong>{accountTypeLabel(accountForm.type)}</strong>
+                          <small>Choose account type</small>
+                        </span>
+                        <svg className="account-type-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                      </button>
+                      {accountTypeMenuOpen && (
+                        <div className="account-type-menu" role="listbox" aria-label="Account types">
+                          {accountTypes.map((item) => (
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={accountForm.type === item.value}
+                              className={`account-type-option${accountForm.type === item.value ? " selected" : ""}`}
+                              key={item.value}
+                              onClick={() => {
+                                setAccountForm((prev) => ({ ...prev, type: item.value }));
+                                setAccountTypeMenuOpen(false);
+                              }}
+                            >
+                              <AccountIcon type={item.value} />
+                              <span><strong>{item.label}</strong><small>{item.value === "credit_card" ? "Track spending and limit" : "Track your available balance"}</small></span>
+                              {accountForm.type === item.value && <svg className="account-type-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <label>
+                    Current balance (INR)
+                    <input type="number" step="0.01" value={accountForm.balance} onChange={(event) => setAccountForm((prev) => ({ ...prev, balance: event.target.value }))} placeholder="0.00" required />
+                  </label>
+                  {accountForm.type === "credit_card" && (
+                    <>
+                      <label>Credit limit (INR)<input type="number" min="0" step="0.01" value={accountForm.creditLimit} onChange={(event) => setAccountForm((prev) => ({ ...prev, creditLimit: event.target.value }))} placeholder="Optional" /></label>
+                      <div className="account-date-fields">
+                        <label>Billing day<input type="number" min="1" max="31" value={accountForm.billingCycleDay} onChange={(event) => setAccountForm((prev) => ({ ...prev, billingCycleDay: event.target.value }))} placeholder="1-31" /></label>
+                        <label>Statement day<input type="number" min="1" max="31" value={accountForm.statementDay} onChange={(event) => setAccountForm((prev) => ({ ...prev, statementDay: event.target.value }))} placeholder="1-31" /></label>
+                        <label>Due day<input type="number" min="1" max="31" value={accountForm.paymentDueDay} onChange={(event) => setAccountForm((prev) => ({ ...prev, paymentDueDay: event.target.value }))} placeholder="1-31" /></label>
+                      </div>
+                    </>
+                  )}
+                  <div className="account-form-actions">
+                    <button className="primary form-submit" type="submit">{editingAccountId ? "Save account" : "Add account"}</button>
+                    {editingAccountId && <button className="ghost form-submit" type="button" onClick={() => { resetAccountForm(); setShowAccountForm(false); }}>Cancel</button>}
+                  </div>
+                </form>
+              )}
+              {accounts.length === 0 ? (
+                <div className="accounts-empty">
+                  <AccountIcon type="bank" />
+                  <div><strong>No accounts yet</strong><p>Add a bank, card, cash or wallet account to track balances with your transactions.</p></div>
+                </div>
+              ) : (
+                <div className="accounts-grid">
+                  {accounts.map((account) => (
+                    <div className={`account-card account-card-${account.type}`} key={account._id}>
+                      <div className="account-card-top">
+                        <AccountIcon type={account.type} />
+                        <div><strong>{account.name}</strong><small>{accountTypeLabel(account.type)}</small></div>
+                        <button className="account-menu-button" type="button" onClick={() => handleEditAccount(account)} aria-label={`Edit ${account.name}`}>
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11.5-11.5a2.1 2.1 0 0 0-3-3L5 17Z" /><path d="m14.5 7.5 3 3" /></svg>
+                        </button>
+                      </div>
+                      <div className="account-balance-label">Available balance</div>
+                      <strong className="account-balance">{formatCurrency.format(account.balance)}</strong>
+                      {account.type === "credit_card" && account.creditLimit > 0 && (
+                        <div className="account-credit-meta">
+                          <span>Utilization {Math.round(Math.min(100, Math.abs(account.balance) / account.creditLimit * 100))}%</span>
+                          {account.paymentDueDay && <span>Due day {account.paymentDueDay}</span>}
+                        </div>
+                      )}
+                      {account.creditLimit !== null && account.creditLimit !== undefined && (
+                        <div className="account-limit">
+                          <div><span>Credit limit</span><strong>{formatCurrency.format(account.creditLimit)}</strong></div>
+                          <span className="account-limit-track"><i style={{ width: `${Math.min(100, Math.abs(account.balance) / Math.max(account.creditLimit, 1) * 100)}%` }} /></span>
+                        </div>
+                      )}
+                      <button className="account-remove" type="button" onClick={() => handleRemoveAccount(account)}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v5M14 11v5M6 7l1 13h10l1-13M9 7l1-3h4l1 3" /></svg>
+                        Remove account
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          </section>
+
+          <section className="security-section settings-section dashboard-mobile-section dashboard-mobile-settings" aria-label="Settings">
+            <article className="panel security-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Personal workspace</p>
+                  <h3>Settings &amp; security</h3>
+                  <p className="muted">Manage your profile, password, verification, and personal data.</p>
+                </div>
+              </div>
+              <form className="security-form" onSubmit={handleProfileSave}>
+                <label>Display name<input value={profileName} onChange={(event) => setProfileName(event.target.value)} maxLength={80} required /></label>
+                <button className="primary small" type="submit" disabled={securityLoading}>Save profile</button>
+              </form>
+              <form className="security-form" onSubmit={handlePasswordChange}>
+                <label>Current password<input type="password" value={securityCurrentPassword} onChange={(event) => setSecurityCurrentPassword(event.target.value)} required /></label>
+                <label>New password<input type="password" minLength={8} value={securityPassword} onChange={(event) => setSecurityPassword(event.target.value)} required /></label>
+                <button className="primary small" type="submit" disabled={securityLoading}>Change password</button>
+              </form>
+              {!user.emailVerified && <div className="security-inline-action"><span>Email not verified</span><button type="button" className="text-action" onClick={handleResendVerification}>Resend verification</button></div>}
+              {securityMessage && <p className="muted security-message">{securityMessage}</p>}
+              <div className="security-actions">
+                <button type="button" className="ghost small" onClick={handleDataExport}>Download personal data</button>
+                <button type="button" className="danger small" onClick={handleAccountDeletion}>Delete account</button>
+              </div>
+            </article>
+          </section>
+
           <section className="content-grid dashboard-mobile-section dashboard-mobile-transactions" id="transactions-section">
             <article className="panel wide">
               <div className="panel-header">
-                <div>
-                  <h3>Recent activity</h3>
-                  <p className="muted">Latest transactions</p>
+                <div className="transactions-heading">
+                  <div className="transactions-heading-icon" aria-hidden="true">↗</div>
+                  <div>
+                    <h3>Recent activity</h3>
+                    <p className="muted">Review, filter and manage your money movement.</p>
+                  </div>
+                </div>
+                <div className="transactions-count">
+                  <strong>{filteredTransactions.length}</strong>
+                  <span>matching entries</span>
                 </div>
               </div>
               <div className="transaction-toolbar">
                 <input className="search-input" type="search"
                   placeholder="Search by title, category, date, amount"
                   value={searchQuery} onChange={handleSearchChange} />
+                <div className="transaction-filter-shell">
+                  <div className="transaction-filter-grid" aria-label="Transaction filters">
+                    <AccountFilterPicker
+                      accounts={accounts}
+                      value={transactionFilters.account}
+                      onChange={(account) => {
+                        setTransactionFilters((prev) => ({ ...prev, account }));
+                        setCurrentPage(1);
+                      }}
+                    />
+                    <FilterOptionPicker
+                      ariaLabel="Filter by category"
+                      value={transactionFilters.category}
+                      onChange={(category) => { setTransactionFilters((prev) => ({ ...prev, category })); setCurrentPage(1); }}
+                      options={[
+                        { value: "", label: "All categories", description: "Show every category", icon: "categories" },
+                        ...[...new Set(normalizedTransactions.map((item) => item.category))].sort().map((category) => ({ value: category, label: category, description: "Spending category", icon: "category", category })),
+                      ]}
+                    />
+                    <FilterOptionPicker
+                      ariaLabel="Filter by type"
+                      value={transactionFilters.type}
+                      onChange={(type) => { setTransactionFilters((prev) => ({ ...prev, type })); setCurrentPage(1); }}
+                      options={[
+                        { value: "", label: "All types", description: "Show every transaction", icon: "types" },
+                        { value: "expense", label: "Expenses", description: "Money spent", icon: "expense" },
+                        { value: "income", label: "Income", description: "Money received", icon: "income" },
+                        { value: "investment", label: "Investments", description: "Money invested", icon: "investment" },
+                      ]}
+                    />
+                    <input aria-label="Filter from date" type="date" value={transactionFilters.from} onChange={(event) => { setTransactionFilters((prev) => ({ ...prev, from: event.target.value })); setCurrentPage(1); }} />
+                    <input aria-label="Filter to date" type="date" value={transactionFilters.to} onChange={(event) => { setTransactionFilters((prev) => ({ ...prev, to: event.target.value })); setCurrentPage(1); }} />
+                    <input aria-label="Minimum amount" type="number" min="0" step="0.01" placeholder="Min amount" value={transactionFilters.min} onChange={(event) => { setTransactionFilters((prev) => ({ ...prev, min: event.target.value })); setCurrentPage(1); }} />
+                    <input aria-label="Maximum amount" type="number" min="0" step="0.01" placeholder="Max amount" value={transactionFilters.max} onChange={(event) => { setTransactionFilters((prev) => ({ ...prev, max: event.target.value })); setCurrentPage(1); }} />
+                    <FilterOptionPicker
+                      ariaLabel="Sort transactions"
+                      value={transactionFilters.sort}
+                      onChange={(sort) => setTransactionFilters((prev) => ({ ...prev, sort }))}
+                      options={[
+                        { value: "date-desc", label: "Newest first", description: "Latest activity", icon: "newest" },
+                        { value: "date-asc", label: "Oldest first", description: "Earliest activity", icon: "oldest" },
+                        { value: "amount-desc", label: "Largest amount", description: "Highest value first", icon: "largest" },
+                        { value: "amount-asc", label: "Smallest amount", description: "Lowest value first", icon: "smallest" },
+                      ]}
+                    />
+                  </div>
+                  <button
+                    className="transaction-clear"
+                    type="button"
+                    onClick={() => { setSearchQuery(""); setTransactionFilters({ account: "", category: "", type: "", from: "", to: "", min: "", max: "", sort: "date-desc" }); setCurrentPage(1); }}
+                    disabled={!searchQuery && !Object.entries(transactionFilters).some(([key, value]) => key !== "sort" && value)}
+                  >
+                    Clear filters
+                  </button>
+                </div>
                 <div className="pagination">
-                  <button className="ghost small"
-                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                    disabled={currentPage === 1}>Prev</button>
-                  <span className="page-indicator">Page {currentPage} / {totalPages}</span>
-                  <button className="ghost small"
-                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                    disabled={currentPage === totalPages}>Next</button>
+                  <button className="ghost small" onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>Previous</button>
+                  <span className="page-indicator"><strong>{currentPage}</strong> / {totalPages}</span>
+                  <button className="ghost small" onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>Next</button>
                 </div>
               </div>
               <div className="transaction-list">
@@ -2303,11 +3357,20 @@ if (authLoading) {
                       <CategoryIcon category={item.category} type={item.type} className="transaction-category-icon" />
                       <div className="transaction-main">
                         <p className="transaction-title">{item.title}</p>
-                        <p className="muted">{item.category} · {formatDate(item.date)}</p>
+                        <p className="muted">{item.category} <span aria-hidden="true">·</span> {formatDate(item.date)}</p>
+                        {item.notes && <p className="muted transaction-note">{item.notes}</p>}
                       </div>
-                      <span className={`amount ${item.amount >= 0 ? "positive" : "negative"}`}>
-                        {item.amount >= 0 ? "+" : "-"}{formatCurrency.format(Math.abs(item.amount))}
-                      </span>
+                      <div className="transaction-end">
+                        <span className={`transaction-type ${item.type}`}>{item.type === "expense" ? "Expense" : item.type === "income" ? "Income" : "Investment"}</span>
+                        <span className={`amount ${item.amount >= 0 ? "positive" : "negative"}`}>
+                          {item.amount >= 0 ? "+" : "-"}{formatCurrency.format(Math.abs(item.amount))}
+                        </span>
+                        <div className="transaction-actions">
+                          <button type="button" className="ghost small" onClick={() => startTransactionEdit(item)}>Edit</button>
+                          <button type="button" className="ghost small" onClick={() => duplicateTransaction(item)}>Duplicate</button>
+                          <button type="button" className="ghost small danger-action" onClick={() => handleRemoveTransaction(item)}>Delete</button>
+                        </div>
+                      </div>
                     </div>
                   ))
                 )}
@@ -2365,19 +3428,19 @@ if (authLoading) {
                   </label>
                   <label>
                     Category
-                    <select name="category" value={goalForm.category} onChange={handleGoalFormChange}>
+                    <IconSelect icon="◈" name="category" value={goalForm.category} onChange={handleGoalFormChange}>
                       {goalCategoryOptions.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
-                    </select>
+                    </IconSelect>
                   </label>
                   <label>
                     Period
-                    <select name="period" value={goalForm.period} onChange={handleGoalFormChange}>
+                    <IconSelect icon="◷" name="period" value={goalForm.period} onChange={handleGoalFormChange}>
                       {goalPeriods.map((p) => (
                         <option key={p.value} value={p.value}>{p.label}</option>
                       ))}
-                    </select>
+                    </IconSelect>
                   </label>
                   <label>
                     Target amount (INR)
@@ -2453,6 +3516,49 @@ if (authLoading) {
               )}
             </article>
           </section>
+          <section className="content-grid dashboard-mobile-section dashboard-mobile-analytics" aria-label="Planning tools">
+            <article className="panel wide">
+              <div className="panel-header">
+                <div><h3>Planning & automation</h3><p className="muted">Move money, set limits, and automate predictable transactions.</p></div>
+              </div>
+              <div className="content-grid">
+                <form className="security-form" onSubmit={handleCreateTransfer}>
+                  <h4>Transfer between accounts</h4>
+                  <IconSelect icon="↗" value={transferForm.sourceAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, sourceAccount: event.target.value }))} required>
+                    <option value="">From account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
+                  </IconSelect>
+                  <IconSelect icon="↘" value={transferForm.destinationAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, destinationAccount: event.target.value }))} required>
+                    <option value="">To account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
+                  </IconSelect>
+                  <input type="number" min="0.01" step="0.01" placeholder="Amount" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required />
+                  <input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required />
+                  <input placeholder="Optional note" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} />
+                  <button className="primary small" type="submit">Move money</button>
+                </form>
+                <form className="security-form" onSubmit={handleSaveBudget}>
+                  <h4>Monthly category budget</h4>
+                  <input placeholder="Category" value={budgetForm.category} onChange={(event) => setBudgetForm((prev) => ({ ...prev, category: event.target.value }))} required />
+                  <input type="number" min="0.01" step="0.01" placeholder="Budget amount" value={budgetForm.amount} onChange={(event) => setBudgetForm((prev) => ({ ...prev, amount: event.target.value }))} required />
+                  <input type="month" value={budgetForm.month || selectedMonth} onChange={(event) => setBudgetForm((prev) => ({ ...prev, month: event.target.value }))} required />
+                  <button className="primary small" type="submit">Save budget</button>
+                  {budgets.map((budget) => <small key={budget._id}>{budget.category}: {formatCurrency.format(budget.actual || 0)} of {formatCurrency.format(budget.amount)} ({budget.percentageUsed || 0}%)</small>)}
+                </form>
+                <form className="security-form" onSubmit={handleSaveRecurring}>
+                  <h4>Recurring transaction</h4>
+                  <input placeholder="Title" value={recurringForm.title} onChange={(event) => setRecurringForm((prev) => ({ ...prev, title: event.target.value }))} required />
+                  <input placeholder="Category" value={recurringForm.category} onChange={(event) => setRecurringForm((prev) => ({ ...prev, category: event.target.value }))} required />
+                  <input type="number" min="0.01" step="0.01" placeholder="Amount" value={recurringForm.amount} onChange={(event) => setRecurringForm((prev) => ({ ...prev, amount: event.target.value }))} required />
+                  <IconSelect icon="▣" value={recurringForm.accountId} onChange={(event) => setRecurringForm((prev) => ({ ...prev, accountId: event.target.value }))}><option value="">No account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}</IconSelect>
+                  <IconSelect icon="↻" value={recurringForm.frequency} onChange={(event) => setRecurringForm((prev) => ({ ...prev, frequency: event.target.value }))}><option value="monthly">Monthly</option><option value="weekly">Weekly</option></IconSelect>
+                  <input type="date" value={recurringForm.startDate} onChange={(event) => setRecurringForm((prev) => ({ ...prev, startDate: event.target.value }))} required />
+                  <button className="primary small" type="submit">Schedule</button>
+                  {recurringTransactions.map((item) => <small key={item._id}><button className="text-action" type="button" onClick={() => handleToggleRecurring(item)}>{item.paused ? "Resume" : "Pause"}</button> {item.title} · next {formatDate(item.nextOccurrence)}</small>)}
+                </form>
+              </div>
+              {transfers.length > 0 && <div className="activity-list">{transfers.slice(0, 5).map((transfer) => <div className="activity-row" key={transfer._id}><span>{transfer.sourceAccount?.name || "Account"} → {transfer.destinationAccount?.name || "Account"}</span><strong>{formatCurrency.format(transfer.amount)}</strong><button className="ghost small" type="button" onClick={() => handleDeleteTransfer(transfer)}>Delete</button></div>)}</div>}
+            </article>
+          </section>
+
           {/* ══════════════════════════════════════════
               MONEY STORY SECTION
           ══════════════════════════════════════════ */}
@@ -2737,7 +3843,7 @@ if (authLoading) {
           <nav
             className="dashboard-bottom-nav"
             aria-label="Dashboard navigation"
-            style={{ "--active-index": mobileView === "transactions" ? 1 : mobileView === "add" ? 2 : mobileView === "analytics" ? 3 : mobileView === "notifications" ? 4 : 0 }}
+            style={{ "--active-index": mobileView === "transactions" ? 1 : mobileView === "add" ? 2 : mobileView === "analytics" ? 3 : mobileView === "accounts" ? 4 : 0 }}
           >
             <button type="button" className={`dashboard-nav-item ${mobileView === "home" ? "active" : ""}`} onClick={() => openMobileView("home")} aria-current={mobileView === "home" ? "page" : undefined}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></svg>
@@ -2755,9 +3861,9 @@ if (authLoading) {
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>
               <small>Analytics</small>
             </button>
-            <button type="button" className={`dashboard-nav-item ${mobileView === "notifications" ? "active" : ""}`} onClick={() => openMobileView("notifications")} aria-current={mobileView === "notifications" ? "page" : undefined}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
-              <small>Alerts</small>
+            <button type="button" className={`dashboard-nav-item ${mobileView === "accounts" ? "active" : ""}`} onClick={() => openMobileView("accounts")} aria-current={mobileView === "accounts" ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 4l9 6" /><path d="M5 10v9M9 10v9M15 10v9M19 10v9M3 20h18" /></svg>
+              <small>Accounts</small>
             </button>
           </nav>
         </>
