@@ -12,7 +12,12 @@ const {
   accountDeltaForValues,
   transactionAmount,
 } = require("./lib/finance");
-const { sendSecurityEmail, securityEmailHtml, smtpConfigured } = require("./lib/email");
+const {
+  sendSecurityEmail,
+  securityEmailHtml,
+  smtpConfigured,
+  smtpConfigSummary,
+} = require("./lib/email");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -44,6 +49,8 @@ const COOKIE_SAME_SITE =
 const COOKIE_SECURE = process.env.COOKIE_SECURE
   ? process.env.COOKIE_SECURE === "true"
   : IS_PRODUCTION_LIKE;
+
+console.log("SMTP configuration:", smtpConfigSummary);
 
 if (IS_PRODUCTION && (!JWT_SECRET || JWT_SECRET.length < 32)) {
   console.error("JWT_SECRET must be set to a random value of at least 32 characters in production.");

@@ -1,5 +1,11 @@
 const nodemailer = require("nodemailer");
 
+const envValue = (name) => {
+  const value = process.env[name];
+  if (!value) return "";
+  return value.trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+};
+
 const escapeHtml = (value) =>
   String(value)
     .replace(/&/g, "&amp;")
@@ -58,32 +64,48 @@ const securityEmailHtml = ({ preheader, heading, message, actionLabel, actionUrl
   </body>
 </html>`;
 
+const smtpHost = envValue("SMTP_HOST");
+const smtpPort = Number(envValue("SMTP_PORT"));
+const smtpUser = envValue("SMTP_USER");
+const smtpPassword = envValue("SMTP_PASSWORD");
+const emailFrom = envValue("EMAIL_FROM");
 const smtpConfigured = Boolean(
-  process.env.SMTP_HOST &&
-  process.env.SMTP_PORT &&
-  process.env.SMTP_USER &&
-  process.env.SMTP_PASSWORD &&
-  process.env.EMAIL_FROM,
+  smtpHost &&
+  Number.isInteger(smtpPort) &&
+  smtpPort > 0 &&
+  smtpUser &&
+  smtpPassword &&
+  emailFrom,
 );
 
 const transporter = smtpConfigured
   ? nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
+    host: smtpHost,
+    port: smtpPort,
+    secure: envValue("SMTP_SECURE").toLowerCase() === "true",
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
+    auth: { user: smtpUser, pass: smtpPassword },
   })
   : null;
 
+const smtpConfigSummary = {
+  configured: smtpConfigured,
+  host: smtpHost || "<missing>",
+  port: Number.isInteger(smtpPort) && smtpPort > 0 ? smtpPort : "<invalid>",
+  secure: envValue("SMTP_SECURE").toLowerCase() === "true",
+  userConfigured: Boolean(smtpUser),
+  passwordConfigured: Boolean(smtpPassword),
+  fromConfigured: Boolean(emailFrom),
+};
+
 const sendSecurityEmail = async ({ to, subject, text, html }) => {
   if (!transporter) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("Security email delivery is not configured; no token was logged.");
-    }
-    return false;
+    throw new Error("SMTP configuration is incomplete");
   }
-  await transporter.sendMail({ from: process.env.EMAIL_FROM, to, subject, text, html });
+  await transporter.sendMail({ from: emailFrom, to, subject, text, html });
   return true;
 };
 
-module.exports = { sendSecurityEmail, securityEmailHtml, smtpConfigured };
+module.exports = { sendSecurityEmail, securityEmailHtml, smtpConfigured, smtpConfigSummary };
