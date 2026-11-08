@@ -1,3 +1,57 @@
+
+/* Premium custom select: the visible control and menu are fully app-styled on every OS. */
+.icon-select.premium-select { position: relative; display: flex; align-items: center; min-height: 48px; isolation: isolate; }
+.icon-select.premium-select > .icon-select-symbol { z-index: 3; }
+.icon-select.premium-select > .premium-select-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-width: 0; min-height: 48px; padding: 0 14px 0 43px;
+  border: 1px solid #dce8e1; border-radius: 12px; color: #244638;
+  background: linear-gradient(180deg,#fff 0%,#fbfdfc 100%);
+  box-shadow: 0 1px 2px rgba(15,45,31,.025), inset 0 1px 0 rgba(255,255,255,.9);
+  text-align: left; font: inherit; font-size: .82rem; cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.icon-select.premium-select > .premium-select-trigger:hover { border-color: #a9d6bd; background: #fff; }
+.icon-select.premium-select > .premium-select-trigger:focus-visible,
+.icon-select.premium-select > .premium-select-trigger[aria-expanded="true"] {
+  outline: none; border-color: #18a574; box-shadow: 0 0 0 4px rgba(16,185,129,.11), 0 5px 16px rgba(15,75,49,.05); background: #fff;
+}
+.premium-select-placeholder { overflow: hidden; color: #87988f; text-overflow: ellipsis; white-space: nowrap; }
+.premium-select-value { overflow: hidden; color: #254638; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.premium-select-chevron { width: 17px; height: 17px; flex: 0 0 17px; fill: none; stroke: #779187; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s ease; }
+.premium-select-chevron.is-open { transform: rotate(180deg); color: #07845f; }
+.premium-select-menu {
+  position: absolute; z-index: 5000; top: calc(100% + 8px); right: 0; left: 0;
+  display: grid; gap: 3px; max-height: min(340px, 48vh); overflow: auto;
+  padding: 7px; border: 1px solid #dce9e2; border-radius: 15px;
+  background: rgba(255,255,255,.98); box-shadow: 0 18px 48px rgba(18,49,34,.16), 0 3px 10px rgba(18,49,34,.06);
+  backdrop-filter: blur(16px); animation: premiumSelectIn .14s ease-out;
+}
+@keyframes premiumSelectIn { from { opacity: 0; transform: translateY(-5px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.premium-select-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-height: 43px; padding: 9px 11px; border: 0; border-radius: 9px;
+  color: #385548; background: transparent; text-align: left; font: inherit; font-size: .79rem; cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.premium-select-option > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.premium-select-option:hover, .premium-select-option.is-active { color: #14583d; background: #f0f8f3; }
+.premium-select-option.is-selected { color: #087b55; background: #eaf7ef; font-weight: 700; }
+.premium-select-option:disabled { opacity: .4; cursor: not-allowed; }
+.premium-select-option > svg { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: #079568; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon-select.premium-select > input[type="hidden"] { display: none; }
+.transfer-field .icon-select.premium-select > .premium-select-trigger { min-height: 48px; }
+.transfer-field .icon-select.premium-select > .premium-select-menu { max-height: 250px; }
+@media (max-width: 768px) {
+  .icon-select.premium-select > .premium-select-trigger { min-height: 46px; font-size: .76rem; }
+  .premium-select-menu { max-height: min(300px, 42vh); }
+  .premium-select-option { min-height: 46px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .premium-select-menu { animation: none; }
+  .premium-select-chevron { transition: none; }
+}
+
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; }
