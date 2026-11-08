@@ -142,7 +142,7 @@ function IconSelect({ icon, className = "", children, value = "", onChange, name
   };
 
   return (
-    <div className={`icon-select premium-select ${className}`} ref={rootRef}>
+    <div className={`icon-select premium-select${open ? " is-open" : ""} ${className}`} ref={rootRef}>
       <span className="icon-select-symbol" aria-hidden="true">{icon}</span>
       <button
         ref={triggerRef}
