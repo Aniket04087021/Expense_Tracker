@@ -205,7 +205,11 @@ function FilterIcon({ name, category }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name] || paths.categories}</svg>;
 }
 
-const defaultDate = new Date().toISOString().slice(0, 10);
+const defaultDate = (() => {
+  const localDate = new Date();
+  localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+  return localDate.toISOString().slice(0, 10);
+})();
 
 const formatCurrency = new Intl.NumberFormat("en-IN", {
   style: "currency",
