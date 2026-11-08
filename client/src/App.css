@@ -11119,3 +11119,74 @@ html, body { overflow-x: hidden !important; }
     padding: 12px 8px;
   }
 }
+
+/* Helpful swipe onboarding banner for transaction actions. */
+.swipe-guide-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 13px;
+  padding: 14px 46px 14px 15px;
+  overflow: hidden;
+  border: 1px solid rgba(28,157,112,.2);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 92% 10%,rgba(52,211,153,.14),transparent 32%),
+    linear-gradient(112deg,#f0fbf5 0%,#f8fcf9 58%,#f1f8f4 100%);
+  box-shadow: 0 5px 16px rgba(20,75,49,.045);
+}
+.swipe-guide-icon {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
+  border: 1px solid rgba(16,150,101,.15);
+  border-radius: 13px;
+  color: #07845f;
+  background: rgba(255,255,255,.82);
+}
+.swipe-guide-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.swipe-guide-content { display: grid; flex: 1 1 auto; min-width: 0; gap: 4px; }
+.swipe-guide-content strong { color: #1c4936; font-size: .79rem; font-weight: 800; letter-spacing: -.01em; }
+.swipe-guide-content span { color: #6d887a; font-size: .7rem; line-height: 1.5; }
+.swipe-guide-content span b { color: #247552; font-weight: 750; }
+.swipe-guide-demo { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.swipe-guide-arrow { color: #138b63; font-size: 1.35rem; font-weight: 800; animation: swipeGuideNudge 1.7s ease-in-out infinite; }
+.swipe-guide-action { padding: 7px 9px; border: 1px solid #dcebe2; border-radius: 8px; color: #176b50; background: #fff; font-size: .62rem; font-weight: 750; white-space: nowrap; }
+.swipe-guide-action.delete { border-color: #f0d6d9; color: #c2414d; background: #fff7f7; }
+.swipe-guide-dismiss {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 0;
+  border-radius: 8px;
+  color: #769084;
+  background: transparent;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+.swipe-guide-dismiss:hover { color: #315b46; background: rgba(255,255,255,.8); }
+@keyframes swipeGuideNudge {
+  0%,100% { transform: translateX(0); opacity: .75; }
+  50% { transform: translateX(-5px); opacity: 1; }
+}
+@media (max-width: 768px) {
+  .swipe-guide-banner { align-items: flex-start; gap: 10px; margin-bottom: 11px; padding: 12px 37px 12px 11px; border-radius: 14px; }
+  .swipe-guide-icon { width: 35px; height: 35px; flex-basis: 35px; border-radius: 11px; }
+  .swipe-guide-icon svg { width: 19px; height: 19px; }
+  .swipe-guide-content { padding-top: 1px; gap: 3px; }
+  .swipe-guide-content strong { font-size: .7rem; line-height: 1.35; }
+  .swipe-guide-content span { font-size: .63rem; line-height: 1.45; }
+  .swipe-guide-demo { display: none; }
+  .swipe-guide-dismiss { top: 5px; right: 5px; width: 25px; height: 25px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipe-guide-arrow { animation: none; }
+}
