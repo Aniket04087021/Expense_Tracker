@@ -327,6 +327,7 @@ function DrawerIcon({ name }) {
   const paths = {
     home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></>,
     transactions: <><path d="M5 6h14M5 12h14M5 18h14" /><path d="M8 6h.01M8 12h.01M8 18h.01" /></>,
+    transfers: <><path d="M7 7h13l-3-3M20 7l-3 3M17 17H4l3 3M4 17l3-3" /></>,
     analytics: <><path d="M5 20V10M12 20V4M19 20v-7" /><path d="M3 20h18" /></>,
     accounts: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h3" /></>,
     notifications: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
@@ -558,6 +559,7 @@ function App() {
   const [budgets, setBudgets] = useState([]);
   const [recurringTransactions, setRecurringTransactions] = useState([]);
   const [transferForm, setTransferForm] = useState({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
+  const [transferMode, setTransferMode] = useState("self");
   const [paymentForm, setPaymentForm] = useState({ recipientName: "", recipientReference: "", accountId: "", amount: "", date: defaultDate, note: "" });
   const [budgetForm, setBudgetForm] = useState({ category: "Food", amount: "", month: "" });
   const [recurringForm, setRecurringForm] = useState({ title: "", category: "Bills", amount: "", type: "expense", frequency: "monthly", accountId: "", startDate: defaultDate });
@@ -2500,7 +2502,7 @@ if (authLoading) {
               <h1>
                 <span className="desktop-header-title">Welcome{user?.name ? `, ${user.name}` : ""}.</span>
                 <span className="mobile-header-title">
-                  {mobileView === "notifications" ? "Notifications" : mobileView === "accounts" ? "Accounts" : mobileView === "settings" ? "Settings" : mobileView === "transactions" ? "Transactions" : mobileView === "analytics" ? "Analytics" : mobileView === "add" ? "Add transaction" : "Overview"}
+                  {mobileView === "notifications" ? "Notifications" : mobileView === "accounts" ? "Accounts" : mobileView === "settings" ? "Settings" : mobileView === "transactions" ? "Transactions" : mobileView === "transfers" ? "Transfers" : mobileView === "analytics" ? "Analytics" : mobileView === "add" ? "Add transaction" : "Overview"}
                 </span>
               </h1>
             </div>
@@ -2608,6 +2610,7 @@ if (authLoading) {
                   <span className="mobile-drawer-label">MAIN</span>
                   <button type="button" className={mobileView === "home" ? "active" : ""} aria-current={mobileView === "home" ? "page" : undefined} onClick={() => openMobileView("home")}><DrawerIcon name="home" /><span>Home</span></button>
                   <button type="button" className={mobileView === "transactions" ? "active" : ""} aria-current={mobileView === "transactions" ? "page" : undefined} onClick={() => openMobileView("transactions")}><DrawerIcon name="transactions" /><span>Transactions</span></button>
+                  <button type="button" className={mobileView === "transfers" ? "active" : ""} aria-current={mobileView === "transfers" ? "page" : undefined} onClick={() => openMobileView("transfers")}><DrawerIcon name="transfers" /><span>Transfers</span></button>
                   <button type="button" className={mobileView === "analytics" ? "active" : ""} aria-current={mobileView === "analytics" ? "page" : undefined} onClick={() => openMobileView("analytics")}><DrawerIcon name="analytics" /><span>Statistics</span></button>
                   <button type="button" className={mobileView === "accounts" ? "active" : ""} aria-current={mobileView === "accounts" ? "page" : undefined} onClick={() => openMobileView("accounts")}><DrawerIcon name="accounts" /><span>Manage accounts</span></button>
                   <button type="button" className={mobileView === "settings" ? "active" : ""} aria-current={mobileView === "settings" ? "page" : undefined} onClick={() => openMobileView("settings")}><DrawerIcon name="settings" /><span>Settings</span></button>
@@ -2641,6 +2644,47 @@ if (authLoading) {
             </div>
           )}
 
+          <section className="dashboard-mobile-section dashboard-mobile-transfers transfer-page" aria-label="Transfers">
+            <div className="transfer-page-hero">
+              <div className="transfer-hero-copy"><span className="transfer-eyebrow">MOVE MONEY WITH CONFIDENCE</span><h2>Transfers, made simple.</h2><p>Move funds between your own accounts or record money sent to someone else — all in one place.</p></div>
+              <div className="transfer-hero-art" aria-hidden="true"><span className="transfer-orbit transfer-orbit-one"></span><span className="transfer-orbit transfer-orbit-two"></span><span className="transfer-art-card"><span>₹</span><b>Secure<br/>movement</b></span><span className="transfer-art-arrow">↗</span></div>
+            </div>
+            <div className="transfer-mode-grid" role="group" aria-label="Choose transfer type">
+              <button type="button" className={transferMode === "self" ? "transfer-mode-card selected" : "transfer-mode-card"} onClick={() => setTransferMode("self")} aria-pressed={transferMode === "self"}><span className="transfer-mode-icon"><DrawerIcon name="transfers" /></span><span className="transfer-mode-copy"><strong>Self transfer</strong><small>Move money between your accounts</small></span><span className="transfer-mode-check">✓</span></button>
+              <button type="button" className={transferMode === "other" ? "transfer-mode-card selected" : "transfer-mode-card"} onClick={() => setTransferMode("other")} aria-pressed={transferMode === "other"}><span className="transfer-mode-icon recipient"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-3A4.5 4.5 0 0 0 4 18.5V20M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM17 8h5m-2.5-2.5v5"/></svg></span><span className="transfer-mode-copy"><strong>Send to someone</strong><small>Record a payment to another person</small></span><span className="transfer-mode-check">✓</span></button>
+            </div>
+            <div className="transfer-workspace">
+              <article className="panel transfer-form-panel">
+                <div className="transfer-form-heading"><div className="transfer-form-heading-icon">{transferMode === "self" ? "↔" : "↗"}</div><div><span className="transfer-eyebrow">{transferMode === "self" ? "INTERNAL MOVEMENT" : "OUTGOING PAYMENT"}</span><h3>{transferMode === "self" ? "Transfer between accounts" : "Send money to a person"}</h3><p>{transferMode === "self" ? "Your money stays yours. This won't change income or spending." : "Record the outgoing payment in your expense history."}</p></div></div>
+                {transferMode === "self" ? (
+                  <form className="security-form transfer-form" onSubmit={handleCreateTransfer}>
+                    <div className="transfer-account-pair">
+                      <label className="transfer-field"><span>FROM ACCOUNT</span><IconSelect icon="↗" value={transferForm.sourceAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, sourceAccount: event.target.value, destinationAccount: prev.destinationAccount === event.target.value ? "" : prev.destinationAccount }))} required><option value="">Choose source account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}</IconSelect></label>
+                      <div className="transfer-direction-mark" aria-hidden="true">↓</div>
+                      <label className="transfer-field"><span>TO ACCOUNT</span><IconSelect icon="↘" value={transferForm.destinationAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, destinationAccount: event.target.value }))} required><option value="">Choose destination account</option>{accounts.filter((account) => String(account._id) !== String(transferForm.sourceAccount)).map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}</IconSelect></label>
+                    </div>
+                    <label className="transfer-field"><span>AMOUNT</span><div className="transfer-amount-input"><b>₹</b><input type="number" min="0.01" step="0.01" placeholder="0.00" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required /></div></label>
+                    <div className="transfer-two-fields"><label className="transfer-field"><span>TRANSFER DATE</span><input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required /></label><label className="transfer-field"><span>NOTE <small>OPTIONAL</small></span><input placeholder="e.g. Monthly savings" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} /></label></div>
+                    <div className="transfer-form-footer"><span>↔ Internal transfer · Not counted as income or expense</span><button className="primary transfer-submit" type="submit" disabled={accounts.length < 2 || !transferForm.sourceAccount || !transferForm.destinationAccount || transferForm.sourceAccount === transferForm.destinationAccount || !(Number(transferForm.amount) > 0)}>Transfer money <span>→</span></button></div>
+                  </form>
+                ) : (
+                  <form className="security-form transfer-form" onSubmit={handleSendMoney}>
+                    <label className="transfer-field"><span>RECIPIENT NAME</span><input value={paymentForm.recipientName} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientName: event.target.value }))} placeholder="Who are you sending money to?" maxLength="100" required /></label>
+                    <label className="transfer-field"><span>UPI ID / PHONE / REFERENCE <small>OPTIONAL</small></span><input value={paymentForm.recipientReference} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientReference: event.target.value }))} placeholder="e.g. name@upi or mobile number" maxLength="120" /></label>
+                    <label className="transfer-field"><span>PAY FROM</span><IconSelect icon="▣" value={paymentForm.accountId} onChange={(event) => setPaymentForm((prev) => ({ ...prev, accountId: event.target.value }))} required><option value="">Select account to pay from</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}</IconSelect></label>
+                    <label className="transfer-field"><span>AMOUNT</span><div className="transfer-amount-input"><b>₹</b><input type="number" min="0.01" step="0.01" placeholder="0.00" value={paymentForm.amount} onChange={(event) => setPaymentForm((prev) => ({ ...prev, amount: event.target.value }))} required /></div></label>
+                    <div className="transfer-two-fields"><label className="transfer-field"><span>PAYMENT DATE</span><input type="date" value={paymentForm.date} onChange={(event) => setPaymentForm((prev) => ({ ...prev, date: event.target.value }))} required /></label><label className="transfer-field"><span>NOTE <small>OPTIONAL</small></span><input value={paymentForm.note} onChange={(event) => setPaymentForm((prev) => ({ ...prev, note: event.target.value }))} placeholder="What's this payment for?" maxLength="500" /></label></div>
+                    <div className="transfer-disclaimer"><span>ⓘ</span><p>This records an expense in Expnse. It does not initiate an actual bank or UPI payment.</p></div>
+                    <div className="transfer-form-footer"><span>↗ External payment · Recorded as expense</span><button className="primary transfer-submit" type="submit" disabled={!paymentForm.recipientName.trim() || !paymentForm.accountId || !(Number(paymentForm.amount) > 0)}>Record payment <span>→</span></button></div>
+                  </form>
+                )}
+              </article>
+              <aside className="transfer-side-panel"><div className="transfer-balance-card"><span>YOUR ACCOUNTS</span><strong>{accounts.length}</strong><small>Connected accounts</small><div className="transfer-balance-list">{accounts.slice(0,4).map((account) => <div key={account._id}><AccountIcon type={account.type}/><span>{account.name}</span><b>{formatCurrency.format(account.balance || 0)}</b></div>)}</div></div><div className="transfer-safety-card"><span className="transfer-safety-icon">⌑</span><strong>Keep your records clear</strong><p>Self transfers move funds between your accounts. Payments to others are tracked as expenses.</p></div></aside>
+            </div>
+            <article className="panel transfer-history-panel"><div className="panel-header"><div><span className="transfer-eyebrow">YOUR MONEY MOVEMENT</span><h3>Recent self transfers</h3><p className="muted">A history of money moved between your own accounts.</p></div><span className="transfer-history-count">{transfers.length} {transfers.length === 1 ? "transfer" : "transfers"}</span></div>
+              {transfers.length === 0 ? <div className="transfer-empty"><span>↔</span><strong>No transfers yet</strong><p>Your completed self transfers will appear here.</p></div> : <div className="transfer-history-list">{transfers.slice(0,8).map((transfer) => <div className="transfer-history-row" key={transfer._id}><span className="transfer-history-icon">↔</span><div className="transfer-history-copy"><strong>{transfer.sourceAccount?.name || "Account"} <span>→</span> {transfer.destinationAccount?.name || "Account"}</strong><small>{formatDate(transfer.date)}{transfer.note ? ` · ${transfer.note}` : ""}</small></div><b>{formatCurrency.format(transfer.amount)}</b><button type="button" className="ghost small" onClick={() => handleDeleteTransfer(transfer)} aria-label="Delete transfer">Delete</button></div>)}</div>}
+            </article>
+          </section>
           {showForm && (
             <section className="content-grid dashboard-mobile-section dashboard-mobile-add">
               <article className="panel">
@@ -2913,44 +2957,6 @@ if (authLoading) {
               </div>
               <div className="summary-detail"><span>Net</span><strong>{formatCurrency.format(totals.balance)}</strong></div>
             </article>
-            </section>
-          )}
-
-          {mobileView === "home" && !showForm && (
-            <section className="dashboard-mobile-section dashboard-mobile-home" aria-label="Quick account transfer">
-              <article className="panel">
-                <div className="panel-header">
-                  <div>
-                    <h3>Quick self-transfer</h3>
-                    <p className="muted">Move money between your own accounts without counting it as income or spending.</p>
-                  </div>
-                  <span aria-hidden="true">↔</span>
-                </div>
-                <form className="security-form" onSubmit={handleCreateTransfer}>
-                  <IconSelect icon="↗" value={transferForm.sourceAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, sourceAccount: event.target.value }))} required>
-                    <option value="">From account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}
-                  </IconSelect>
-                  <IconSelect icon="↘" value={transferForm.destinationAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, destinationAccount: event.target.value }))} required>
-                    <option value="">To account</option>{accounts.filter((account) => String(account._id) !== String(transferForm.sourceAccount)).map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
-                  </IconSelect>
-                  <input type="number" min="0.01" step="0.01" placeholder="Amount (₹)" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required />
-                  <input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required />
-                  <input placeholder="Optional note" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} />
-                  <button className="primary small" type="submit" disabled={accounts.length < 2 || !transferForm.sourceAccount || !transferForm.destinationAccount || transferForm.sourceAccount === transferForm.destinationAccount}>Transfer between my accounts</button>
-                </form>
-                {transfers.length > 0 && (
-                  <div className="activity-list">
-                    <strong>Recent self-transfers</strong>
-                    {transfers.slice(0, 3).map((transfer) => (
-                      <div className="activity-row" key={transfer._id}>
-                        <span>{transfer.sourceAccount?.name || "Account"} → {transfer.destinationAccount?.name || "Account"}</span>
-                        <strong>{formatCurrency.format(transfer.amount)}</strong>
-                        <button className="ghost small" type="button" onClick={() => handleDeleteTransfer(transfer)}>Delete</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </article>
             </section>
           )}
 
@@ -3586,32 +3592,6 @@ if (authLoading) {
                 <div><h3>Planning & automation</h3><p className="muted">Move money, set limits, and automate predictable transactions.</p></div>
               </div>
               <div className="content-grid">
-                <form className="security-form" onSubmit={handleCreateTransfer}>
-                  <h4>Transfer between accounts</h4>
-                  <IconSelect icon="↗" value={transferForm.sourceAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, sourceAccount: event.target.value }))} required>
-                    <option value="">From account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
-                  </IconSelect>
-                  <IconSelect icon="↘" value={transferForm.destinationAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, destinationAccount: event.target.value }))} required>
-                    <option value="">To account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
-                  </IconSelect>
-                  <input type="number" min="0.01" step="0.01" placeholder="Amount" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required />
-                  <input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required />
-                  <input placeholder="Optional note" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} />
-                  <button className="primary small" type="submit">Move money</button>
-                </form>
-                <form className="security-form" onSubmit={handleSendMoney}>
-                  <h4>Send money to someone</h4>
-                  <input value={paymentForm.recipientName} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientName: event.target.value }))} placeholder="Recipient name" maxLength="100" required />
-                  <input value={paymentForm.recipientReference} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientReference: event.target.value }))} placeholder="UPI ID / phone / reference (optional)" maxLength="120" />
-                  <IconSelect icon="↗" value={paymentForm.accountId} onChange={(event) => setPaymentForm((prev) => ({ ...prev, accountId: event.target.value }))} required>
-                    <option value="">Pay from account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
-                  </IconSelect>
-                  <input type="number" min="0.01" step="0.01" placeholder="Amount (₹)" value={paymentForm.amount} onChange={(event) => setPaymentForm((prev) => ({ ...prev, amount: event.target.value }))} required />
-                  <input type="date" value={paymentForm.date} onChange={(event) => setPaymentForm((prev) => ({ ...prev, date: event.target.value }))} required />
-                  <input value={paymentForm.note} onChange={(event) => setPaymentForm((prev) => ({ ...prev, note: event.target.value }))} placeholder="Note (optional)" maxLength="500" />
-                  <small>This records an expense in Expnse; it does not initiate a real bank or UPI transfer.</small>
-                  <button className="primary small" type="submit">Record payment</button>
-                </form>
                 <form className="security-form" onSubmit={handleSaveBudget}>
                   <h4>Monthly category budget</h4>
                   <input placeholder="Category" value={budgetForm.category} onChange={(event) => setBudgetForm((prev) => ({ ...prev, category: event.target.value }))} required />
