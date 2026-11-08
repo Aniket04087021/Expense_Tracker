@@ -709,6 +709,15 @@ app.put("/api/accounts/:id", requireAuth, async (req, res) => {
 
 app.delete("/api/accounts/:id", requireAuth, async (req, res) => {
   try {
+    const hasTransferHistory = await Transfer.exists({
+      user: req.user._id,
+      $or: [{ sourceAccount: req.params.id }, { destinationAccount: req.params.id }],
+    });
+    if (hasTransferHistory) {
+      return res.status(409).json({
+        error: "This account is used in transfer history. Keep it to preserve your financial records, or remove its transfers first.",
+      });
+    }
     const account = await Account.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!account) return res.status(404).json({ error: "Account not found" });
     await Transaction.updateMany({ user: req.user._id, account: account._id }, { $unset: { account: 1 } });
