@@ -657,6 +657,8 @@ function App() {
   const [recurringTransactions, setRecurringTransactions] = useState([]);
   const [transferForm, setTransferForm] = useState({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
   const [transferMode, setTransferMode] = useState("self");
+  const transferRequestRef = useRef(null);
+  const paymentRequestRef = useRef(null);
   const [paymentForm, setPaymentForm] = useState({ recipientName: "", recipientReference: "", accountId: "", amount: "", date: defaultDate, note: "" });
   const [budgetForm, setBudgetForm] = useState({ category: "Food", amount: "", month: "" });
   const [recurringForm, setRecurringForm] = useState({ title: "", category: "Bills", amount: "", type: "expense", frequency: "monthly", accountId: "", startDate: defaultDate });
@@ -1442,10 +1444,14 @@ function App() {
   const handleCreateTransfer = async (event) => {
     event.preventDefault();
     try {
+      const payload = JSON.stringify(transferForm);
+      if (!transferRequestRef.current || transferRequestRef.current.payload !== payload) {
+        transferRequestRef.current = { payload, key: globalThis.crypto?.randomUUID?.() || `transfer-${Date.now()}-${Math.random()}` };
+      }
       const response = await apiRequest("/transfers", {
         method: "POST",
-        headers: { "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify(transferForm),
+        headers: { "Idempotency-Key": transferRequestRef.current.key },
+        body: payload,
       });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Transfer failed");
       const transfer = await response.json();
@@ -1453,6 +1459,7 @@ function App() {
       const accountsResponse = await apiRequest("/accounts");
       if (accountsResponse.ok) setAccounts(await accountsResponse.json());
       setTransferForm({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
+      transferRequestRef.current = null;
       notify("Transfer completed.");
     } catch (error) {
       notify(error.message || "Could not complete transfer.", "error");
@@ -1466,10 +1473,14 @@ function App() {
       return;
     }
     try {
+      const payload = JSON.stringify(paymentForm);
+      if (!paymentRequestRef.current || paymentRequestRef.current.payload !== payload) {
+        paymentRequestRef.current = { payload, key: globalThis.crypto?.randomUUID?.() || `payment-${Date.now()}-${Math.random()}` };
+      }
       const response = await apiRequest("/payments", {
         method: "POST",
-        headers: { "Idempotency-Key": globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` },
-        body: JSON.stringify(paymentForm),
+        headers: { "Idempotency-Key": paymentRequestRef.current.key },
+        body: payload,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Payment could not be recorded.");
@@ -1477,6 +1488,7 @@ function App() {
       const accountsResponse = await apiRequest("/accounts");
       if (accountsResponse.ok) setAccounts(await accountsResponse.json());
       setPaymentForm({ recipientName: "", recipientReference: "", accountId: "", amount: "", date: defaultDate, note: "" });
+      paymentRequestRef.current = null;
       notify("Payment recorded successfully. No bank/UPI payment was initiated.");
     } catch (error) {
       notify(error.message || "Could not record payment.", "error");
