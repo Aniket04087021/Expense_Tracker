@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Children, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./mobile-fixes.css";
@@ -83,11 +83,108 @@ function CategoryIcon({ category, type, className = "" }) {
   </span>;
 }
 
-function IconSelect({ icon, className = "", children, ...props }) {
+function IconSelect({ icon, className = "", children, value = "", onChange, name, required = false, disabled = false, "aria-label": ariaLabel, ...props }) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const options = Children.toArray(children).filter((child) => isValidElement(child) && child.type === "option");
+  const selectedIndex = options.findIndex((option) => String(option.props.value ?? "") === String(value ?? ""));
+  const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : options[0];
+  const selectedLabel = selectedOption?.props.children ?? "Choose an option";
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnOutside = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const chooseOption = (option) => {
+    if (option.props.disabled) return;
+    onChange?.({ target: { name, value: String(option.props.value ?? "") } });
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const handleTriggerKeyDown = (event) => {
+    if (disabled) return;
+    if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        setActiveIndex((current) => (current + direction + options.length) % options.length);
+      } else if (activeIndex >= 0 && options[activeIndex]) {
+        chooseOption(options[activeIndex]);
+      }
+    } else if (event.key === "Home" && open) {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End" && open) {
+      event.preventDefault();
+      setActiveIndex(options.length - 1);
+    }
+  };
+
   return (
-    <div className={`icon-select ${className}`}>
+    <div className={`icon-select premium-select ${className}`} ref={rootRef}>
       <span className="icon-select-symbol" aria-hidden="true">{icon}</span>
-      <select {...props}>{children}</select>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="premium-select-trigger"
+        role="combobox"
+        aria-label={ariaLabel || selectedLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? `select-${name || "field"}-options` : undefined}
+        aria-required={required || undefined}
+        disabled={disabled}
+        onClick={() => { setOpen((current) => !current); setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0); }}
+        onKeyDown={handleTriggerKeyDown}
+      >
+        <span className={selectedIndex < 0 ? "premium-select-placeholder" : "premium-select-value"}>{selectedLabel}</span>
+        <svg className={`premium-select-chevron${open ? " is-open" : ""}`} viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="premium-select-menu" id={`select-${name || "field"}-options`} role="listbox" aria-label={ariaLabel || String(selectedLabel)}>
+          {options.map((option, index) => {
+            const optionValue = String(option.props.value ?? "");
+            const selected = optionValue === String(value ?? "");
+            return (
+              <button
+                key={option.key ?? optionValue ?? index}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                disabled={option.props.disabled}
+                className={`premium-select-option${selected ? " is-selected" : ""}${activeIndex === index ? " is-active" : ""}`}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => chooseOption(option)}
+              >
+                <span>{option.props.children}</span>
+                {selected && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <input type="hidden" name={name} value={value ?? ""} {...props} />
     </div>
   );
 }
