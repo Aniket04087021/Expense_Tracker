@@ -48,6 +48,7 @@ export const calculateNetWorth = (accounts, investmentValue = 0) =>
       toMinorUnits(investmentValue),
   );
 
+// Reconstruct balances only when account.balance is the opening balance before the supplied transactions. Never pass server-synchronized current balances, or effects are double-counted.
 export const calculateAccountBalances = (accounts, transactions) => {
   const balances = new Map(
     accounts.map((account) => [String(account._id || account.id), toMinorUnits(account.balance)]),

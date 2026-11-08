@@ -96,6 +96,8 @@ const transactionSchema = new mongoose.Schema(
     date: { type: Date, required: true },
     amount: { type: Number, required: true },
     notes: { type: String, trim: true, maxlength: 500, default: "" },
+    recipientName: { type: String, trim: true, maxlength: 100, default: "" },
+    recipientReference: { type: String, trim: true, maxlength: 120, default: "" },
     idempotencyKey: { type: String, trim: true, maxlength: 120 },
     type: {
       type: String,
@@ -707,6 +709,15 @@ app.put("/api/accounts/:id", requireAuth, async (req, res) => {
 
 app.delete("/api/accounts/:id", requireAuth, async (req, res) => {
   try {
+    const hasTransferHistory = await Transfer.exists({
+      user: req.user._id,
+      $or: [{ sourceAccount: req.params.id }, { destinationAccount: req.params.id }],
+    });
+    if (hasTransferHistory) {
+      return res.status(409).json({
+        error: "This account is used in transfer history. Keep it to preserve your financial records, or remove its transfers first.",
+      });
+    }
     const account = await Account.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!account) return res.status(404).json({ error: "Account not found" });
     await Transaction.updateMany({ user: req.user._id, account: account._id }, { $unset: { account: 1 } });
@@ -790,7 +801,7 @@ app.post("/api/transactions", requireAuth, async (req, res) => {
       }
       throw error;
     }
-    await createNotification(req.user._id, "Transaction added", `${created.title} was added successfully.`, "transaction");
+    createNotification(req.user._id, "Transaction added", `${created.title} was added successfully.`, "transaction").catch((error) => console.error("Transaction notification failed:", error.message));
     res.status(201).json(created);
   } catch (error) {
     res.status(500).json({ error: "Failed to save transaction" });
@@ -859,7 +870,7 @@ app.put("/api/transactions/:id", requireAuth, async (req, res) => {
       }
       throw error;
     }
-    await createNotification(req.user._id, "Transaction updated", `${transaction.title} was updated successfully.`, "transaction");
+    createNotification(req.user._id, "Transaction updated", `${transaction.title} was updated successfully.`, "transaction").catch((error) => console.error("Transaction notification failed:", error.message));
     res.json(transaction);
   } catch (error) {
     res.status(500).json({ error: "Failed to update transaction" });
@@ -892,7 +903,7 @@ app.delete("/api/transactions/:id", requireAuth, async (req, res) => {
       }
       return res.status(404).json({ error: "Not found" });
     }
-    await createNotification(req.user._id, "Transaction deleted", `${deleted.title} was removed.`, "transaction");
+    createNotification(req.user._id, "Transaction deleted", `${deleted.title} was removed.`, "transaction").catch((error) => console.error("Transaction notification failed:", error.message));
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete transaction" });
@@ -929,6 +940,55 @@ const validateTransferPayload = (body) => {
     note: typeof body.note === "string" ? body.note.trim().slice(0, 240) : "",
   };
 };
+
+
+// External recipient payment: recorded as an expense, never as an internal transfer.
+app.post("/api/payments", requireAuth, async (req, res) => {
+  try {
+    const recipientName = typeof req.body?.recipientName === "string" ? req.body.recipientName.trim() : "";
+    const recipientReference = typeof req.body?.recipientReference === "string" ? req.body.recipientReference.trim() : "";
+    const note = typeof req.body?.note === "string" ? req.body.note.trim() : "";
+    const amount = Number(req.body?.amount);
+    const date = parseDateValue(req.body?.date);
+    const accountId = req.body?.accountId;
+    if (!recipientName || recipientName.length > 100 || recipientReference.length > 120 || note.length > 500 ||
+        !Number.isFinite(amount) || amount <= 0 || !date || !accountId) {
+      return res.status(400).json({ error: "Enter a recipient, valid amount, date, and source account." });
+    }
+    const account = await Account.findOne({ _id: accountId, user: req.user._id });
+    if (!account) return res.status(404).json({ error: "Source account not found." });
+    const idempotencyKey = String(req.get("Idempotency-Key") || "").trim().slice(0, 120);
+    if (idempotencyKey) {
+      const existing = await Transaction.findOne({ user: req.user._id, idempotencyKey });
+      if (existing) return res.status(200).json(existing);
+    }
+    const signedAmount = transactionAmount(amount, "expense");
+    const delta = accountDeltaForValues(signedAmount, "expense");
+    if (!(await applyAccountDelta(account._id, req.user._id, delta))) {
+      return res.status(409).json({ error: "Account changed while recording payment." });
+    }
+    try {
+      const payment = await Transaction.create({
+        user: req.user._id, account: account._id,
+        title: `Payment to ${recipientName}`, category: "Transfer",
+        date, amount: signedAmount, type: "expense",
+        notes: note, recipientName, recipientReference,
+        idempotencyKey: idempotencyKey || undefined,
+      });
+      createNotification(req.user._id, "Money sent", `${fromMinorUnits(toMinorUnits(amount)).toFixed(2)} sent to ${recipientName}.`, "transaction").catch((error) => console.error("Payment notification failed:", error.message));
+      return res.status(201).json(payment);
+    } catch (error) {
+      await applyAccountDelta(account._id, req.user._id, -delta);
+      if (error.code === 11000 && idempotencyKey) {
+        const existing = await Transaction.findOne({ user: req.user._id, idempotencyKey });
+        if (existing) return res.status(200).json(existing);
+      }
+      throw error;
+    }
+  } catch (error) {
+    return res.status(500).json({ error: "Could not record this payment." });
+  }
+});
 
 app.get("/api/transfers", requireAuth, async (req, res) => {
   try {
@@ -972,7 +1032,7 @@ app.post("/api/transfers", requireAuth, async (req, res) => {
         ...payload,
         idempotencyKey: idempotencyKey || undefined,
       });
-      await createNotification(req.user._id, "Transfer completed", `${source.name} to ${destination.name}`, "transfer");
+      createNotification(req.user._id, "Transfer completed", `${source.name} to ${destination.name}`, "transfer").catch((error) => console.error("Transfer notification failed:", error.message));
       return res.status(201).json(transfer);
     } catch (error) {
       await applyAccountDelta(source._id, req.user._id, delta);

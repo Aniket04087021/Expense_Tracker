@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Children, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./mobile-fixes.css";
@@ -83,11 +83,108 @@ function CategoryIcon({ category, type, className = "" }) {
   </span>;
 }
 
-function IconSelect({ icon, className = "", children, ...props }) {
+function IconSelect({ icon, className = "", children, value = "", onChange, name, required = false, disabled = false, "aria-label": ariaLabel, ...props }) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const options = Children.toArray(children).filter((child) => isValidElement(child) && child.type === "option");
+  const selectedIndex = options.findIndex((option) => String(option.props.value ?? "") === String(value ?? ""));
+  const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : options[0];
+  const selectedLabel = selectedOption?.props.children ?? "Choose an option";
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnOutside = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const chooseOption = (option) => {
+    if (option.props.disabled) return;
+    onChange?.({ target: { name, value: String(option.props.value ?? "") } });
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const handleTriggerKeyDown = (event) => {
+    if (disabled) return;
+    if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        setActiveIndex((current) => (current + direction + options.length) % options.length);
+      } else if (activeIndex >= 0 && options[activeIndex]) {
+        chooseOption(options[activeIndex]);
+      }
+    } else if (event.key === "Home" && open) {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End" && open) {
+      event.preventDefault();
+      setActiveIndex(options.length - 1);
+    }
+  };
+
   return (
-    <div className={`icon-select ${className}`}>
+    <div className={`icon-select premium-select${open ? " is-open" : ""} ${className}`} ref={rootRef}>
       <span className="icon-select-symbol" aria-hidden="true">{icon}</span>
-      <select {...props}>{children}</select>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="premium-select-trigger"
+        role="combobox"
+        aria-label={ariaLabel || selectedLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? `select-${name || "field"}-options` : undefined}
+        aria-required={required || undefined}
+        disabled={disabled}
+        onClick={() => { setOpen((current) => !current); setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0); }}
+        onKeyDown={handleTriggerKeyDown}
+      >
+        <span className={selectedIndex < 0 ? "premium-select-placeholder" : "premium-select-value"}>{selectedLabel}</span>
+        <svg className={`premium-select-chevron${open ? " is-open" : ""}`} viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="premium-select-menu" id={`select-${name || "field"}-options`} role="listbox" aria-label={ariaLabel || String(selectedLabel)}>
+          {options.map((option, index) => {
+            const optionValue = String(option.props.value ?? "");
+            const selected = optionValue === String(value ?? "");
+            return (
+              <button
+                key={option.key ?? optionValue ?? index}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                disabled={option.props.disabled}
+                className={`premium-select-option${selected ? " is-selected" : ""}${activeIndex === index ? " is-active" : ""}`}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => chooseOption(option)}
+              >
+                <span>{option.props.children}</span>
+                {selected && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <input type="hidden" name={name} value={value ?? ""} {...props} />
     </div>
   );
 }
@@ -108,7 +205,11 @@ function FilterIcon({ name, category }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name] || paths.categories}</svg>;
 }
 
-const defaultDate = new Date().toISOString().slice(0, 10);
+const defaultDate = (() => {
+  const localDate = new Date();
+  localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+  return localDate.toISOString().slice(0, 10);
+})();
 
 const formatCurrency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -327,6 +428,7 @@ function DrawerIcon({ name }) {
   const paths = {
     home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /></>,
     transactions: <><path d="M5 6h14M5 12h14M5 18h14" /><path d="M8 6h.01M8 12h.01M8 18h.01" /></>,
+    transfers: <><path d="M7 7h13l-3-3M20 7l-3 3M17 17H4l3 3M4 17l3-3" /></>,
     analytics: <><path d="M5 20V10M12 20V4M19 20v-7" /><path d="M3 20h18" /></>,
     accounts: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h3" /></>,
     notifications: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
@@ -558,6 +660,10 @@ function App() {
   const [budgets, setBudgets] = useState([]);
   const [recurringTransactions, setRecurringTransactions] = useState([]);
   const [transferForm, setTransferForm] = useState({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
+  const [transferMode, setTransferMode] = useState("self");
+  const transferRequestRef = useRef(null);
+  const paymentRequestRef = useRef(null);
+  const [paymentForm, setPaymentForm] = useState({ recipientName: "", recipientReference: "", accountId: "", amount: "", date: defaultDate, note: "" });
   const [budgetForm, setBudgetForm] = useState({ category: "Food", amount: "", month: "" });
   const [recurringForm, setRecurringForm] = useState({ title: "", category: "Bills", amount: "", type: "expense", frequency: "monthly", accountId: "", startDate: defaultDate });
   const [showAccountForm, setShowAccountForm] = useState(false);
@@ -605,6 +711,9 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [transactionFilters, setTransactionFilters] = useState({ account: "", category: "", type: "", from: "", to: "", min: "", max: "", sort: "date-desc" });
   const [currentPage, setCurrentPage] = useState(1);
+  const [swipedTransactionId, setSwipedTransactionId] = useState(null);
+  const [showSwipeGuide, setShowSwipeGuide] = useState(true);
+  const transactionTouchStartRef = useRef(null);
   const pageSize = 5;
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [formState, setFormState] = useState({
@@ -1342,10 +1451,14 @@ function App() {
   const handleCreateTransfer = async (event) => {
     event.preventDefault();
     try {
+      const payload = JSON.stringify(transferForm);
+      if (!transferRequestRef.current || transferRequestRef.current.payload !== payload) {
+        transferRequestRef.current = { payload, key: globalThis.crypto?.randomUUID?.() || `transfer-${Date.now()}-${Math.random()}` };
+      }
       const response = await apiRequest("/transfers", {
         method: "POST",
-        headers: { "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify(transferForm),
+        headers: { "Idempotency-Key": transferRequestRef.current.key },
+        body: payload,
       });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Transfer failed");
       const transfer = await response.json();
@@ -1353,9 +1466,39 @@ function App() {
       const accountsResponse = await apiRequest("/accounts");
       if (accountsResponse.ok) setAccounts(await accountsResponse.json());
       setTransferForm({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
+      transferRequestRef.current = null;
       notify("Transfer completed.");
     } catch (error) {
       notify(error.message || "Could not complete transfer.", "error");
+    }
+  };
+
+  const handleSendMoney = async (event) => {
+    event.preventDefault();
+    if (!paymentForm.recipientName.trim() || !paymentForm.accountId || !(Number(paymentForm.amount) > 0)) {
+      notify("Enter recipient, source account, and a valid amount.", "error");
+      return;
+    }
+    try {
+      const payload = JSON.stringify(paymentForm);
+      if (!paymentRequestRef.current || paymentRequestRef.current.payload !== payload) {
+        paymentRequestRef.current = { payload, key: globalThis.crypto?.randomUUID?.() || `payment-${Date.now()}-${Math.random()}` };
+      }
+      const response = await apiRequest("/payments", {
+        method: "POST",
+        headers: { "Idempotency-Key": paymentRequestRef.current.key },
+        body: payload,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Payment could not be recorded.");
+      setTransactions((items) => [data, ...items]);
+      const accountsResponse = await apiRequest("/accounts");
+      if (accountsResponse.ok) setAccounts(await accountsResponse.json());
+      setPaymentForm({ recipientName: "", recipientReference: "", accountId: "", amount: "", date: defaultDate, note: "" });
+      paymentRequestRef.current = null;
+      notify("Payment recorded successfully. No bank/UPI payment was initiated.");
+    } catch (error) {
+      notify(error.message || "Could not record payment.", "error");
     }
   };
 
@@ -2475,7 +2618,7 @@ if (authLoading) {
               <h1>
                 <span className="desktop-header-title">Welcome{user?.name ? `, ${user.name}` : ""}.</span>
                 <span className="mobile-header-title">
-                  {mobileView === "notifications" ? "Notifications" : mobileView === "accounts" ? "Accounts" : mobileView === "settings" ? "Settings" : mobileView === "transactions" ? "Transactions" : mobileView === "analytics" ? "Analytics" : mobileView === "add" ? "Add transaction" : "Overview"}
+                  {mobileView === "notifications" ? "Notifications" : mobileView === "accounts" ? "Accounts" : mobileView === "settings" ? "Settings" : mobileView === "transactions" ? "Transactions" : mobileView === "transfers" ? "Transfers" : mobileView === "analytics" ? "Analytics" : mobileView === "add" ? "Add transaction" : "Overview"}
                 </span>
               </h1>
             </div>
@@ -2583,6 +2726,7 @@ if (authLoading) {
                   <span className="mobile-drawer-label">MAIN</span>
                   <button type="button" className={mobileView === "home" ? "active" : ""} aria-current={mobileView === "home" ? "page" : undefined} onClick={() => openMobileView("home")}><DrawerIcon name="home" /><span>Home</span></button>
                   <button type="button" className={mobileView === "transactions" ? "active" : ""} aria-current={mobileView === "transactions" ? "page" : undefined} onClick={() => openMobileView("transactions")}><DrawerIcon name="transactions" /><span>Transactions</span></button>
+                  <button type="button" className={mobileView === "transfers" ? "active" : ""} aria-current={mobileView === "transfers" ? "page" : undefined} onClick={() => openMobileView("transfers")}><DrawerIcon name="transfers" /><span>Transfers</span></button>
                   <button type="button" className={mobileView === "analytics" ? "active" : ""} aria-current={mobileView === "analytics" ? "page" : undefined} onClick={() => openMobileView("analytics")}><DrawerIcon name="analytics" /><span>Statistics</span></button>
                   <button type="button" className={mobileView === "accounts" ? "active" : ""} aria-current={mobileView === "accounts" ? "page" : undefined} onClick={() => openMobileView("accounts")}><DrawerIcon name="accounts" /><span>Manage accounts</span></button>
                   <button type="button" className={mobileView === "settings" ? "active" : ""} aria-current={mobileView === "settings" ? "page" : undefined} onClick={() => openMobileView("settings")}><DrawerIcon name="settings" /><span>Settings</span></button>
@@ -2616,6 +2760,53 @@ if (authLoading) {
             </div>
           )}
 
+          {mobileView === "transfers" && (
+          <section className="dashboard-mobile-section dashboard-mobile-transfers transfer-page" aria-label="Transfers">
+            <div className="transfer-page-hero">
+              <div className="transfer-hero-copy"><span className="transfer-eyebrow">MOVE MONEY WITH CONFIDENCE</span><h2>Transfers, made simple.</h2><p>Move funds between your own accounts or record money sent to someone else — all in one place.</p></div>
+              <div className="transfer-hero-art" aria-hidden="true"><span className="transfer-orbit transfer-orbit-one"></span><span className="transfer-orbit transfer-orbit-two"></span><span className="transfer-art-card"><span>₹</span><b>Secure<br/>movement</b></span><span className="transfer-art-arrow">↗</span></div>
+            </div>
+            <div className="transfer-mode-grid" role="group" aria-label="Choose transfer type">
+              <button type="button" className={transferMode === "self" ? "transfer-mode-card selected" : "transfer-mode-card"} onClick={() => setTransferMode("self")} aria-pressed={transferMode === "self"}><span className="transfer-mode-icon"><DrawerIcon name="transfers" /></span><span className="transfer-mode-copy"><strong>Self transfer</strong><small>Move money between your accounts</small></span><span className="transfer-mode-check">✓</span></button>
+              <button type="button" className={transferMode === "other" ? "transfer-mode-card selected" : "transfer-mode-card"} onClick={() => setTransferMode("other")} aria-pressed={transferMode === "other"}><span className="transfer-mode-icon recipient"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-3A4.5 4.5 0 0 0 4 18.5V20M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM17 8h5m-2.5-2.5v5"/></svg></span><span className="transfer-mode-copy"><strong>Send to someone</strong><small>Record a payment to another person</small></span><span className="transfer-mode-check">✓</span></button>
+            </div>
+            <div className="transfer-workspace">
+              <article className="panel transfer-form-panel">
+                <div className="transfer-form-heading"><div className="transfer-form-heading-icon">{transferMode === "self" ? "↔" : "↗"}</div><div><span className="transfer-eyebrow">{transferMode === "self" ? "INTERNAL MOVEMENT" : "OUTGOING PAYMENT"}</span><h3>{transferMode === "self" ? "Transfer between accounts" : "Send money to a person"}</h3><p>{transferMode === "self" ? "Your money stays yours. This won't change income or spending." : "Record the outgoing payment in your expense history."}</p></div></div>
+                {transferMode === "self" ? (
+                  <form className="security-form transfer-form" onSubmit={handleCreateTransfer}>
+                    <div className="transfer-account-pair">
+                      <label className="transfer-field"><span>FROM ACCOUNT</span><IconSelect icon={<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" /></svg>} value={transferForm.sourceAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, sourceAccount: event.target.value, destinationAccount: prev.destinationAccount === event.target.value ? "" : prev.destinationAccount }))} required><option value="">Choose source account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}</IconSelect></label>
+                      <div className="transfer-direction-mark" aria-hidden="true">↓</div>
+                      <label className="transfer-field"><span>TO ACCOUNT</span><IconSelect icon={<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" /></svg>} value={transferForm.destinationAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, destinationAccount: event.target.value }))} required><option value="">Choose destination account</option>{accounts.filter((account) => String(account._id) !== String(transferForm.sourceAccount)).map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}</IconSelect></label>
+                    </div>
+                    <label className="transfer-field"><span>AMOUNT</span><div className="transfer-amount-input"><b>₹</b><input type="number" min="0.01" step="0.01" placeholder="0.00" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required /></div></label>
+                    <div className="transfer-two-fields"><label className="transfer-field"><span>TRANSFER DATE</span><input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required /></label><label className="transfer-field"><span>NOTE <small>OPTIONAL</small></span><input placeholder="e.g. Monthly savings" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} /></label></div>
+                    <div className="transfer-form-footer"><span>↔ Internal transfer · Not counted as income or expense</span><button className="primary transfer-submit" type="submit" disabled={accounts.length < 2 || !transferForm.sourceAccount || !transferForm.destinationAccount || transferForm.sourceAccount === transferForm.destinationAccount || !(Number(transferForm.amount) > 0)}>Transfer money <span>→</span></button></div>
+                  </form>
+                ) : (
+                  <form className="security-form transfer-form" onSubmit={handleSendMoney}>
+                    <label className="transfer-field"><span>RECIPIENT NAME</span><input value={paymentForm.recipientName} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientName: event.target.value }))} placeholder="Who are you sending money to?" maxLength="100" required /></label>
+                    <label className="transfer-field"><span>UPI ID / PHONE / REFERENCE <small>OPTIONAL</small></span><input value={paymentForm.recipientReference} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientReference: event.target.value }))} placeholder="e.g. name@upi or mobile number" maxLength="120" /></label>
+                    <label className="transfer-field"><span>PAY FROM</span><IconSelect icon={<AccountIcon type="bank" />} value={paymentForm.accountId} onChange={(event) => setPaymentForm((prev) => ({ ...prev, accountId: event.target.value }))} required><option value="">Select account to pay from</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}</IconSelect></label>
+                    <label className="transfer-field"><span>AMOUNT</span><div className="transfer-amount-input"><b>₹</b><input type="number" min="0.01" step="0.01" placeholder="0.00" value={paymentForm.amount} onChange={(event) => setPaymentForm((prev) => ({ ...prev, amount: event.target.value }))} required /></div></label>
+                    <div className="transfer-two-fields"><label className="transfer-field"><span>PAYMENT DATE</span><input type="date" value={paymentForm.date} onChange={(event) => setPaymentForm((prev) => ({ ...prev, date: event.target.value }))} required /></label><label className="transfer-field"><span>NOTE <small>OPTIONAL</small></span><input value={paymentForm.note} onChange={(event) => setPaymentForm((prev) => ({ ...prev, note: event.target.value }))} placeholder="What's this payment for?" maxLength="500" /></label></div>
+                    <div className="transfer-disclaimer"><span>ⓘ</span><p>This records an expense in Expnse. It does not initiate an actual bank or UPI payment.</p></div>
+                    <div className="transfer-form-footer"><span>↗ External payment · Recorded as expense</span><button className="primary transfer-submit" type="submit" disabled={!paymentForm.recipientName.trim() || !paymentForm.accountId || !(Number(paymentForm.amount) > 0)}>Record payment <span>→</span></button></div>
+                  </form>
+                )}
+              </article>
+              <aside className="transfer-side-panel"><div className="transfer-balance-card"><span>YOUR ACCOUNTS</span><strong>{accounts.length}</strong><small>Connected accounts</small><div className="transfer-balance-list">{accounts.slice(0,4).map((account) => <div key={account._id}><AccountIcon type={account.type}/><span>{account.name}</span><b>{formatCurrency.format(account.balance || 0)}</b></div>)}</div></div><div className="transfer-safety-card"><span className="transfer-safety-icon">⌑</span><strong>Keep your records clear</strong><p>Self transfers move funds between your accounts. Payments to others are tracked as expenses.</p></div></aside>
+            </div>
+            <article className="panel transfer-history-panel"><div className="panel-header"><div><span className="transfer-eyebrow">YOUR MONEY MOVEMENT</span><h3>Recent self transfers</h3><p className="muted">A history of money moved between your own accounts.</p></div><span className="transfer-history-count">{transfers.length} {transfers.length === 1 ? "transfer" : "transfers"}</span></div>
+              {transfers.length === 0 ? <div className="transfer-empty"><span>↔</span><strong>No transfers yet</strong><p>Your completed self transfers will appear here.</p></div> : <div className="transfer-history-list">{transfers.slice(0,8).map((transfer) => <div className="transfer-history-row" key={transfer._id}><span className="transfer-history-icon">↔</span><div className="transfer-history-copy"><strong>{transfer.sourceAccount?.name || "Account"} <span>→</span> {transfer.destinationAccount?.name || "Account"}</strong><small>{formatDate(transfer.date)}{transfer.note ? ` · ${transfer.note}` : ""}</small></div><b>{formatCurrency.format(transfer.amount)}</b><button type="button" className="ghost small" onClick={() => handleDeleteTransfer(transfer)} aria-label="Delete transfer">Delete</button></div>)}</div>}
+            </article>
+            <article className="panel transfer-history-panel">
+              <div className="panel-header"><div><span className="transfer-eyebrow">OUTGOING PAYMENTS</span><h3>Recent payments to people</h3><p className="muted">Payments recorded from your accounts.</p></div><span className="transfer-history-count">{transactions.filter((item) => item.recipientName).length} payments</span></div>
+              {transactions.filter((item) => item.recipientName).length === 0 ? <div className="transfer-empty"><span>↗</span><strong>No external payments yet</strong><p>Payments you record to other people will appear here.</p></div> : <div className="transfer-history-list">{transactions.filter((item) => item.recipientName).slice(0,8).map((payment) => <div className="transfer-history-row" key={payment._id}><span className="transfer-history-icon recipient">↗</span><div className="transfer-history-copy"><strong>Payment to {payment.recipientName}</strong><small>{payment.account?.name || "Account"} · {formatDate(payment.date)}{payment.notes ? ` · ${payment.notes}` : ""}</small></div><b>{formatCurrency.format(Math.abs(payment.amount || 0))}</b><button type="button" className="ghost small" onClick={() => handleRemoveTransaction(payment)} aria-label={`Delete payment to ${payment.recipientName}`}>Delete</button></div>)}</div>}
+            </article>
+          </section>
+          )}
           {showForm && (
             <section className="content-grid dashboard-mobile-section dashboard-mobile-add">
               <article className="panel">
@@ -2836,7 +3027,8 @@ if (authLoading) {
             <article className="summary-card">
               <div>
                 <p className="card-label">Total balance</p>
-                <h2>{formatCurrency.format(totals.balance)}</h2>
+                <h2>{formatCurrency.format(availableBalance)}</h2>
+                <small className="muted">Includes account starting balances; not counted as income.</small>
               </div>
               <div className="summary-detail"><span>Income</span><strong>{formatCurrency.format(totals.income)}</strong></div>
               <div className="summary-detail"><span>Invested</span><strong>{formatCurrency.format(totals.investment)}</strong></div>
@@ -2844,11 +3036,11 @@ if (authLoading) {
             </article>
             <article className="summary-card summary-card-highlight">
               <div>
-                <p className="card-label">Available across accounts</p>
-                <h2>{formatCurrency.format(availableBalance)}</h2>
+                <p className="card-label">Net cash flow</p>
+                <h2>{formatCurrency.format(totals.netCashFlow)}</h2>
               </div>
               <div className="summary-detail"><span>Accounts</span><strong>{accounts.length}</strong></div>
-              <div className="summary-detail"><span>Cash flow</span><strong>{formatCurrency.format(totals.netCashFlow)}</strong></div>
+              <div className="summary-detail"><span>Available balance</span><strong>{formatCurrency.format(availableBalance)}</strong></div>
             </article>
             <article className="summary-card">
               <div>
@@ -3348,28 +3540,63 @@ if (authLoading) {
                   <button className="ghost small" onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>Next</button>
                 </div>
               </div>
+              {showSwipeGuide && (
+                <aside className="swipe-guide-banner" aria-label="How to use transaction cards">
+                  <div className="swipe-guide-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5" /><path d="M8 5 4 9m0 0 4 4" /></svg>
+                  </div>
+                  <div className="swipe-guide-content">
+                    <strong>Quick actions, right at your fingertips</strong>
+                    <span>Swipe a transaction card <b>left</b> to reveal <b>Edit</b> and <b>Delete</b>. Swipe <b>right</b> to close.</span>
+                  </div>
+                  <div className="swipe-guide-demo" aria-hidden="true">
+                    <span className="swipe-guide-arrow">←</span>
+                    <span className="swipe-guide-action edit">Edit</span>
+                    <span className="swipe-guide-action delete">Delete</span>
+                  </div>
+                  <button type="button" className="swipe-guide-dismiss" onClick={() => setShowSwipeGuide(false)} aria-label="Dismiss swipe instructions" title="Dismiss instructions">×</button>
+                </aside>
+              )}
               <div className="transaction-list">
                 {filteredTransactions.length === 0 ? (
                   <p className="empty-state">No transactions yet. Add your first expense.</p>
                 ) : (
                   pagedTransactions.map((item) => (
-                    <div className="transaction transaction-with-icon" key={item._id ?? item.id}>
-                      <CategoryIcon category={item.category} type={item.type} className="transaction-category-icon" />
-                      <div className="transaction-main">
-                        <p className="transaction-title">{item.title}</p>
-                        <p className="muted">{item.category} <span aria-hidden="true">·</span> {formatDate(item.date)}</p>
-                        {item.notes && <p className="muted transaction-note">{item.notes}</p>}
-                      </div>
-                      <div className="transaction-end">
-                        <span className={`transaction-type ${item.type}`}>{item.type === "expense" ? "Expense" : item.type === "income" ? "Income" : "Investment"}</span>
-                        <span className={`amount ${item.amount >= 0 ? "positive" : "negative"}`}>
-                          {item.amount >= 0 ? "+" : "-"}{formatCurrency.format(Math.abs(item.amount))}
-                        </span>
-                        <div className="transaction-actions">
-                          <button type="button" className="ghost small" onClick={() => startTransactionEdit(item)}>Edit</button>
-                          <button type="button" className="ghost small" onClick={() => duplicateTransaction(item)}>Duplicate</button>
-                          <button type="button" className="ghost small danger-action" onClick={() => handleRemoveTransaction(item)}>Delete</button>
+                    <div className={`transaction-swipe-shell${swipedTransactionId === String(item._id ?? item.id) ? " is-swiped" : ""}`} key={item._id ?? item.id}>
+                      <div
+                        className="transaction transaction-with-icon transaction-swipe-card"
+                        onTouchStart={(event) => {
+                          const touch = event.touches[0];
+                          transactionTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+                        }}
+                        onTouchEnd={(event) => {
+                          if (!transactionTouchStartRef.current) return;
+                          const touch = event.changedTouches[0];
+                          const deltaX = touch.clientX - transactionTouchStartRef.current.x;
+                          const deltaY = touch.clientY - transactionTouchStartRef.current.y;
+                          transactionTouchStartRef.current = null;
+                          if (Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+                            setSwipedTransactionId(deltaX < 0 ? String(item._id ?? item.id) : null);
+                          }
+                        }}
+                        onFocusCapture={() => setSwipedTransactionId(String(item._id ?? item.id))}
+                      >
+                        <CategoryIcon category={item.category} type={item.type} className="transaction-category-icon" />
+                        <div className="transaction-main">
+                          <p className="transaction-title">{item.title}</p>
+                          <p className="muted">{item.category} <span aria-hidden="true">·</span> {formatDate(item.date)}</p>
+                          {item.notes && <p className="muted transaction-note">{item.notes}</p>}
                         </div>
+                        <div className="transaction-end">
+                          <span className={`transaction-type ${item.type}`}>{item.type === "expense" ? "Expense" : item.type === "income" ? "Income" : "Investment"}</span>
+                          <span className={`amount ${item.amount >= 0 ? "positive" : "negative"}`}>
+                            {item.amount >= 0 ? "+" : "-"}{formatCurrency.format(Math.abs(item.amount))}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="transaction-swipe-actions" aria-label={`Actions for ${item.title}`}>
+                        <button type="button" className="transaction-swipe-edit" onClick={() => { setSwipedTransactionId(null); startTransactionEdit(item); }}>Edit</button>
+                        <button type="button" className="transaction-swipe-delete" onClick={() => { setSwipedTransactionId(null); handleRemoveTransaction(item); }}>Delete</button>
                       </div>
                     </div>
                   ))
@@ -3522,19 +3749,6 @@ if (authLoading) {
                 <div><h3>Planning & automation</h3><p className="muted">Move money, set limits, and automate predictable transactions.</p></div>
               </div>
               <div className="content-grid">
-                <form className="security-form" onSubmit={handleCreateTransfer}>
-                  <h4>Transfer between accounts</h4>
-                  <IconSelect icon="↗" value={transferForm.sourceAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, sourceAccount: event.target.value }))} required>
-                    <option value="">From account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
-                  </IconSelect>
-                  <IconSelect icon="↘" value={transferForm.destinationAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, destinationAccount: event.target.value }))} required>
-                    <option value="">To account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
-                  </IconSelect>
-                  <input type="number" min="0.01" step="0.01" placeholder="Amount" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required />
-                  <input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required />
-                  <input placeholder="Optional note" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} />
-                  <button className="primary small" type="submit">Move money</button>
-                </form>
                 <form className="security-form" onSubmit={handleSaveBudget}>
                   <h4>Monthly category budget</h4>
                   <input placeholder="Category" value={budgetForm.category} onChange={(event) => setBudgetForm((prev) => ({ ...prev, category: event.target.value }))} required />
