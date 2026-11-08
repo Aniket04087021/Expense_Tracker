@@ -711,6 +711,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [transactionFilters, setTransactionFilters] = useState({ account: "", category: "", type: "", from: "", to: "", min: "", max: "", sort: "date-desc" });
   const [currentPage, setCurrentPage] = useState(1);
+  const [swipedTransactionId, setSwipedTransactionId] = useState(null);
+  const transactionTouchStartRef = useRef(null);
   const pageSize = 5;
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [formState, setFormState] = useState({
@@ -3542,23 +3544,41 @@ if (authLoading) {
                   <p className="empty-state">No transactions yet. Add your first expense.</p>
                 ) : (
                   pagedTransactions.map((item) => (
-                    <div className="transaction transaction-with-icon" key={item._id ?? item.id}>
-                      <CategoryIcon category={item.category} type={item.type} className="transaction-category-icon" />
-                      <div className="transaction-main">
-                        <p className="transaction-title">{item.title}</p>
-                        <p className="muted">{item.category} <span aria-hidden="true">·</span> {formatDate(item.date)}</p>
-                        {item.notes && <p className="muted transaction-note">{item.notes}</p>}
-                      </div>
-                      <div className="transaction-end">
-                        <span className={`transaction-type ${item.type}`}>{item.type === "expense" ? "Expense" : item.type === "income" ? "Income" : "Investment"}</span>
-                        <span className={`amount ${item.amount >= 0 ? "positive" : "negative"}`}>
-                          {item.amount >= 0 ? "+" : "-"}{formatCurrency.format(Math.abs(item.amount))}
-                        </span>
-                        <div className="transaction-actions">
-                          <button type="button" className="ghost small" onClick={() => startTransactionEdit(item)}>Edit</button>
-                          <button type="button" className="ghost small" onClick={() => duplicateTransaction(item)}>Duplicate</button>
-                          <button type="button" className="ghost small danger-action" onClick={() => handleRemoveTransaction(item)}>Delete</button>
+                    <div className={`transaction-swipe-shell${swipedTransactionId === String(item._id ?? item.id) ? " is-swiped" : ""}`} key={item._id ?? item.id}>
+                      <div
+                        className="transaction transaction-with-icon transaction-swipe-card"
+                        onTouchStart={(event) => {
+                          const touch = event.touches[0];
+                          transactionTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+                        }}
+                        onTouchEnd={(event) => {
+                          if (!transactionTouchStartRef.current) return;
+                          const touch = event.changedTouches[0];
+                          const deltaX = touch.clientX - transactionTouchStartRef.current.x;
+                          const deltaY = touch.clientY - transactionTouchStartRef.current.y;
+                          transactionTouchStartRef.current = null;
+                          if (Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+                            setSwipedTransactionId(deltaX < 0 ? String(item._id ?? item.id) : null);
+                          }
+                        }}
+                        onFocusCapture={() => setSwipedTransactionId(String(item._id ?? item.id))}
+                      >
+                        <CategoryIcon category={item.category} type={item.type} className="transaction-category-icon" />
+                        <div className="transaction-main">
+                          <p className="transaction-title">{item.title}</p>
+                          <p className="muted">{item.category} <span aria-hidden="true">·</span> {formatDate(item.date)}</p>
+                          {item.notes && <p className="muted transaction-note">{item.notes}</p>}
                         </div>
+                        <div className="transaction-end">
+                          <span className={`transaction-type ${item.type}`}>{item.type === "expense" ? "Expense" : item.type === "income" ? "Income" : "Investment"}</span>
+                          <span className={`amount ${item.amount >= 0 ? "positive" : "negative"}`}>
+                            {item.amount >= 0 ? "+" : "-"}{formatCurrency.format(Math.abs(item.amount))}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="transaction-swipe-actions" aria-label={`Actions for ${item.title}`}>
+                        <button type="button" className="transaction-swipe-edit" onClick={() => { setSwipedTransactionId(null); startTransactionEdit(item); }}>Edit</button>
+                        <button type="button" className="transaction-swipe-delete" onClick={() => { setSwipedTransactionId(null); handleRemoveTransaction(item); }}>Delete</button>
                       </div>
                     </div>
                   ))
