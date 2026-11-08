@@ -712,6 +712,7 @@ function App() {
   const [transactionFilters, setTransactionFilters] = useState({ account: "", category: "", type: "", from: "", to: "", min: "", max: "", sort: "date-desc" });
   const [currentPage, setCurrentPage] = useState(1);
   const [swipedTransactionId, setSwipedTransactionId] = useState(null);
+  const [showSwipeGuide, setShowSwipeGuide] = useState(true);
   const transactionTouchStartRef = useRef(null);
   const pageSize = 5;
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
@@ -3539,6 +3540,23 @@ if (authLoading) {
                   <button className="ghost small" onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>Next</button>
                 </div>
               </div>
+              {showSwipeGuide && (
+                <aside className="swipe-guide-banner" aria-label="How to use transaction cards">
+                  <div className="swipe-guide-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5" /><path d="M8 5 4 9m0 0 4 4" /></svg>
+                  </div>
+                  <div className="swipe-guide-content">
+                    <strong>Quick actions, right at your fingertips</strong>
+                    <span>Swipe a transaction card <b>left</b> to reveal <b>Edit</b> and <b>Delete</b>. Swipe <b>right</b> to close.</span>
+                  </div>
+                  <div className="swipe-guide-demo" aria-hidden="true">
+                    <span className="swipe-guide-arrow">←</span>
+                    <span className="swipe-guide-action edit">Edit</span>
+                    <span className="swipe-guide-action delete">Delete</span>
+                  </div>
+                  <button type="button" className="swipe-guide-dismiss" onClick={() => setShowSwipeGuide(false)} aria-label="Dismiss swipe instructions" title="Dismiss instructions">×</button>
+                </aside>
+              )}
               <div className="transaction-list">
                 {filteredTransactions.length === 0 ? (
                   <p className="empty-state">No transactions yet. Add your first expense.</p>
