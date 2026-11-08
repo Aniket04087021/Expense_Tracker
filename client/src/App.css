@@ -10965,3 +10965,105 @@ html, body { overflow-x: hidden !important; }
 .transfer-form .icon-select-symbol .account-icon svg { width: 17px; height: 17px; }
 
 .transfer-history-icon.recipient { color: #6656b6; background: #f0edff; }
+
+
+/* Transaction cards: clean layout with swipe-to-reveal actions on touch devices. */
+.transaction-swipe-shell {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-radius: var(--r-sm, 14px);
+}
+.transaction-swipe-card {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.transaction-swipe-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 0 0 0 10px;
+}
+.transaction-swipe-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border, #dce8e1);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--text, #234638);
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.transaction-swipe-actions .transaction-swipe-edit { color: #176b50; }
+.transaction-swipe-actions .transaction-swipe-delete {
+  color: #c2414d;
+  border-color: rgba(220,70,85,.22);
+  background: rgba(255,245,246,.9);
+}
+.transaction-swipe-actions button:focus-visible {
+  outline: 3px solid rgba(16,185,129,.25);
+  outline-offset: 2px;
+}
+@media (max-width: 768px) {
+  .transaction-list { gap: 11px; }
+  .transaction-swipe-shell {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border, #e1ebe5);
+    border-radius: 16px;
+    background: linear-gradient(135deg,#f7fbf8,#edf5f0);
+    box-shadow: 0 5px 15px rgba(25,65,45,.045);
+    isolation: isolate;
+  }
+  .transaction-swipe-card {
+    display: flex;
+    min-height: 88px;
+    padding: 14px 13px;
+    border: 0;
+    border-radius: 15px;
+    background: linear-gradient(145deg,#fff 0%,#fbfefc 100%);
+    box-shadow: 0 1px 3px rgba(20,55,38,.035);
+    transform: translateX(0);
+    transition: transform .24s cubic-bezier(.2,.75,.25,1), box-shadow .2s ease;
+    touch-action: pan-y;
+    will-change: transform;
+  }
+  .transaction-swipe-shell.is-swiped .transaction-swipe-card {
+    transform: translateX(-132px);
+    box-shadow: 3px 0 12px rgba(20,55,38,.09);
+  }
+  .transaction-swipe-actions {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    width: 132px;
+    padding: 0 8px;
+  }
+  .transaction-swipe-actions button {
+    display: grid;
+    place-items: center;
+    min-width: 53px;
+    min-height: 42px;
+    padding: 0 8px;
+    border-radius: 11px;
+    font-size: .7rem;
+  }
+  .transaction-swipe-actions .transaction-swipe-edit { background: #fff; }
+  .transaction-swipe-actions .transaction-swipe-delete { color: #fff; border-color: #d94e5b; background: #d94e5b; }
+  .transaction-main { min-width: 0; flex: 1; }
+  .transaction-title { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+  .transaction-end { flex: 0 0 auto; align-items: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .transaction-swipe-card { transition: none; }
+}
