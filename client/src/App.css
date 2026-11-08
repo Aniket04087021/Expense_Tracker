@@ -1,3 +1,12 @@
+/* Active dropdown must win the sibling stacking order (source/destination fields). */
+.icon-select.premium-select { z-index: 1; }
+.icon-select.premium-select.is-open { z-index: 120; }
+.transfer-account-pair { position: relative; isolation: auto; overflow: visible; }
+.transfer-field { position: relative; min-width: 0; }
+.transfer-field:has(.premium-select.is-open) { z-index: 120; }
+.transfer-form-panel, .transfer-form, .transfer-account-pair { overflow: visible; }
+.premium-select-menu { z-index: 9999; }
+
 
 /* Premium custom select: the visible control and menu are fully app-styled on every OS. */
 .icon-select.premium-select { position: relative; display: flex; align-items: center; min-height: 48px; isolation: isolate; }
