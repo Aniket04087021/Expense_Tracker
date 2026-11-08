@@ -792,7 +792,7 @@ app.post("/api/transactions", requireAuth, async (req, res) => {
       }
       throw error;
     }
-    await createNotification(req.user._id, "Transaction added", `${created.title} was added successfully.`, "transaction");
+    createNotification(req.user._id, "Transaction added", `${created.title} was added successfully.`, "transaction").catch((error) => console.error("Transaction notification failed:", error.message));
     res.status(201).json(created);
   } catch (error) {
     res.status(500).json({ error: "Failed to save transaction" });
@@ -861,7 +861,7 @@ app.put("/api/transactions/:id", requireAuth, async (req, res) => {
       }
       throw error;
     }
-    await createNotification(req.user._id, "Transaction updated", `${transaction.title} was updated successfully.`, "transaction");
+    createNotification(req.user._id, "Transaction updated", `${transaction.title} was updated successfully.`, "transaction").catch((error) => console.error("Transaction notification failed:", error.message));
     res.json(transaction);
   } catch (error) {
     res.status(500).json({ error: "Failed to update transaction" });
@@ -894,7 +894,7 @@ app.delete("/api/transactions/:id", requireAuth, async (req, res) => {
       }
       return res.status(404).json({ error: "Not found" });
     }
-    await createNotification(req.user._id, "Transaction deleted", `${deleted.title} was removed.`, "transaction");
+    createNotification(req.user._id, "Transaction deleted", `${deleted.title} was removed.`, "transaction").catch((error) => console.error("Transaction notification failed:", error.message));
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete transaction" });
@@ -966,7 +966,7 @@ app.post("/api/payments", requireAuth, async (req, res) => {
         notes: note, recipientName, recipientReference,
         idempotencyKey: idempotencyKey || undefined,
       });
-      await createNotification(req.user._id, "Money sent", `${fromMinorUnits(toMinorUnits(amount)).toFixed(2)} sent to ${recipientName}.`, "transaction");
+      createNotification(req.user._id, "Money sent", `${fromMinorUnits(toMinorUnits(amount)).toFixed(2)} sent to ${recipientName}.`, "transaction").catch((error) => console.error("Payment notification failed:", error.message));
       return res.status(201).json(payment);
     } catch (error) {
       await applyAccountDelta(account._id, req.user._id, -delta);
@@ -1023,7 +1023,7 @@ app.post("/api/transfers", requireAuth, async (req, res) => {
         ...payload,
         idempotencyKey: idempotencyKey || undefined,
       });
-      await createNotification(req.user._id, "Transfer completed", `${source.name} to ${destination.name}`, "transfer");
+      createNotification(req.user._id, "Transfer completed", `${source.name} to ${destination.name}`, "transfer").catch((error) => console.error("Transfer notification failed:", error.message));
       return res.status(201).json(transfer);
     } catch (error) {
       await applyAccountDelta(source._id, req.user._id, delta);
