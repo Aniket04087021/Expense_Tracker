@@ -558,6 +558,7 @@ function App() {
   const [budgets, setBudgets] = useState([]);
   const [recurringTransactions, setRecurringTransactions] = useState([]);
   const [transferForm, setTransferForm] = useState({ sourceAccount: "", destinationAccount: "", amount: "", date: defaultDate, note: "" });
+  const [paymentForm, setPaymentForm] = useState({ recipientName: "", recipientReference: "", accountId: "", amount: "", date: defaultDate, note: "" });
   const [budgetForm, setBudgetForm] = useState({ category: "Food", amount: "", month: "" });
   const [recurringForm, setRecurringForm] = useState({ title: "", category: "Bills", amount: "", type: "expense", frequency: "monthly", accountId: "", startDate: defaultDate });
   const [showAccountForm, setShowAccountForm] = useState(false);
@@ -1356,6 +1357,30 @@ function App() {
       notify("Transfer completed.");
     } catch (error) {
       notify(error.message || "Could not complete transfer.", "error");
+    }
+  };
+
+  const handleSendMoney = async (event) => {
+    event.preventDefault();
+    if (!paymentForm.recipientName.trim() || !paymentForm.accountId || !(Number(paymentForm.amount) > 0)) {
+      notify("Enter recipient, source account, and a valid amount.", "error");
+      return;
+    }
+    try {
+      const response = await apiRequest("/payments", {
+        method: "POST",
+        headers: { "Idempotency-Key": globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` },
+        body: JSON.stringify(paymentForm),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Payment could not be recorded.");
+      setTransactions((items) => [data, ...items]);
+      const accountsResponse = await apiRequest("/accounts");
+      if (accountsResponse.ok) setAccounts(await accountsResponse.json());
+      setPaymentForm({ recipientName: "", recipientReference: "", accountId: "", amount: "", date: defaultDate, note: "" });
+      notify("Payment recorded successfully. No bank/UPI payment was initiated.");
+    } catch (error) {
+      notify(error.message || "Could not record payment.", "error");
     }
   };
 
@@ -3534,6 +3559,19 @@ if (authLoading) {
                   <input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required />
                   <input placeholder="Optional note" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} />
                   <button className="primary small" type="submit">Move money</button>
+                </form>
+                <form className="security-form" onSubmit={handleSendMoney}>
+                  <h4>Send money to someone</h4>
+                  <input value={paymentForm.recipientName} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientName: event.target.value }))} placeholder="Recipient name" maxLength="100" required />
+                  <input value={paymentForm.recipientReference} onChange={(event) => setPaymentForm((prev) => ({ ...prev, recipientReference: event.target.value }))} placeholder="UPI ID / phone / reference (optional)" maxLength="120" />
+                  <IconSelect icon="↗" value={paymentForm.accountId} onChange={(event) => setPaymentForm((prev) => ({ ...prev, accountId: event.target.value }))} required>
+                    <option value="">Pay from account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
+                  </IconSelect>
+                  <input type="number" min="0.01" step="0.01" placeholder="Amount (₹)" value={paymentForm.amount} onChange={(event) => setPaymentForm((prev) => ({ ...prev, amount: event.target.value }))} required />
+                  <input type="date" value={paymentForm.date} onChange={(event) => setPaymentForm((prev) => ({ ...prev, date: event.target.value }))} required />
+                  <input value={paymentForm.note} onChange={(event) => setPaymentForm((prev) => ({ ...prev, note: event.target.value }))} placeholder="Note (optional)" maxLength="500" />
+                  <small>This records an expense in Expnse; it does not initiate a real bank or UPI transfer.</small>
+                  <button className="primary small" type="submit">Record payment</button>
                 </form>
                 <form className="security-form" onSubmit={handleSaveBudget}>
                   <h4>Monthly category budget</h4>
