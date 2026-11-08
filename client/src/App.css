@@ -10729,3 +10729,30 @@ html, body { overflow-x: hidden !important; }
     min-height: 28px;
   }
 }
+
+
+/* Mobile navigation scroll reliability: override earlier drawer styles. */
+@media (max-width: 768px) {
+  .dashboard-app .profile-popover,
+  .dashboard-app .mobile-drawer {
+    box-sizing: border-box !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+    scrollbar-width: thin;
+  }
+  .dashboard-app .mobile-drawer-layer {
+    position: fixed;
+    inset: 0;
+    min-height: 0;
+  }
+  .dashboard-app .profile-popover button,
+  .dashboard-app .mobile-drawer button {
+    touch-action: manipulation;
+  }
+}
