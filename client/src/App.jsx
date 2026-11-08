@@ -2644,6 +2644,7 @@ if (authLoading) {
             </div>
           )}
 
+          {mobileView === "transfers" && (
           <section className="dashboard-mobile-section dashboard-mobile-transfers transfer-page" aria-label="Transfers">
             <div className="transfer-page-hero">
               <div className="transfer-hero-copy"><span className="transfer-eyebrow">MOVE MONEY WITH CONFIDENCE</span><h2>Transfers, made simple.</h2><p>Move funds between your own accounts or record money sent to someone else — all in one place.</p></div>
@@ -2685,6 +2686,7 @@ if (authLoading) {
               {transfers.length === 0 ? <div className="transfer-empty"><span>↔</span><strong>No transfers yet</strong><p>Your completed self transfers will appear here.</p></div> : <div className="transfer-history-list">{transfers.slice(0,8).map((transfer) => <div className="transfer-history-row" key={transfer._id}><span className="transfer-history-icon">↔</span><div className="transfer-history-copy"><strong>{transfer.sourceAccount?.name || "Account"} <span>→</span> {transfer.destinationAccount?.name || "Account"}</strong><small>{formatDate(transfer.date)}{transfer.note ? ` · ${transfer.note}` : ""}</small></div><b>{formatCurrency.format(transfer.amount)}</b><button type="button" className="ghost small" onClick={() => handleDeleteTransfer(transfer)} aria-label="Delete transfer">Delete</button></div>)}</div>}
             </article>
           </section>
+          )}
           {showForm && (
             <section className="content-grid dashboard-mobile-section dashboard-mobile-add">
               <article className="panel">
