@@ -1,4 +1,7 @@
 /* Active dropdown must win the sibling stacking order (source/destination fields). */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
 .icon-select.premium-select { z-index: 1; }
 .icon-select.premium-select.is-open { z-index: 120; }
 .transfer-account-pair { position: relative; isolation: auto; overflow: visible; }
@@ -61,7 +64,7 @@
   .premium-select-chevron { transition: none; }
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -10965,3 +10968,52 @@ html, body { overflow-x: hidden !important; }
 .transfer-form .icon-select-symbol .account-icon svg { width: 17px; height: 17px; }
 
 .transfer-history-icon.recipient { color: #6656b6; background: #f0edff; }
+
+/* Center Self Transfer and Send to Someone cards */
+.transfer-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 680px);
+  margin: 0 auto;
+  gap: 14px;
+}
+
+.transfer-mode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 145px;
+  padding: 18px;
+}
+
+.transfer-mode-copy {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.transfer-mode-copy small {
+  text-align: center;
+}
+
+.transfer-mode-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .transfer-mode-grid {
+    gap: 10px;
+  }
+
+  .transfer-mode-card {
+    min-height: 130px;
+    padding: 12px 8px;
+  }
+}
