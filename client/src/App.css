@@ -10896,3 +10896,7 @@ html, body { overflow-x: hidden !important; }
   .transfer-history-row { flex-wrap: wrap; }
   .transfer-history-row > b { margin-left: auto; }
 }
+
+.transfer-form .icon-select-symbol > svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.transfer-form .icon-select-symbol .account-icon { width: 19px; height: 19px; border: 0; border-radius: 0; color: inherit; background: transparent; }
+.transfer-form .icon-select-symbol .account-icon svg { width: 17px; height: 17px; }
