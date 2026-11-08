@@ -2861,7 +2861,7 @@ if (authLoading) {
             <article className="summary-card">
               <div>
                 <p className="card-label">Total balance</p>
-                <h2>{formatCurrency.format(totals.balance)}</h2>
+                <h2>{formatCurrency.format(availableBalance)}</h2>
               </div>
               <div className="summary-detail"><span>Income</span><strong>{formatCurrency.format(totals.income)}</strong></div>
               <div className="summary-detail"><span>Invested</span><strong>{formatCurrency.format(totals.investment)}</strong></div>
@@ -2869,11 +2869,11 @@ if (authLoading) {
             </article>
             <article className="summary-card summary-card-highlight">
               <div>
-                <p className="card-label">Available across accounts</p>
-                <h2>{formatCurrency.format(availableBalance)}</h2>
+                <p className="card-label">Net cash flow</p>
+                <h2>{formatCurrency.format(totals.netCashFlow)}</h2>
               </div>
               <div className="summary-detail"><span>Accounts</span><strong>{accounts.length}</strong></div>
-              <div className="summary-detail"><span>Cash flow</span><strong>{formatCurrency.format(totals.netCashFlow)}</strong></div>
+              <div className="summary-detail"><span>Available balance</span><strong>{formatCurrency.format(availableBalance)}</strong></div>
             </article>
             <article className="summary-card">
               <div>
@@ -2912,6 +2912,44 @@ if (authLoading) {
               </div>
               <div className="summary-detail"><span>Net</span><strong>{formatCurrency.format(totals.balance)}</strong></div>
             </article>
+            </section>
+          )}
+
+          {mobileView === "home" && !showForm && (
+            <section className="dashboard-mobile-section dashboard-mobile-home" aria-label="Quick account transfer">
+              <article className="panel">
+                <div className="panel-header">
+                  <div>
+                    <h3>Quick self-transfer</h3>
+                    <p className="muted">Move money between your own accounts without counting it as income or spending.</p>
+                  </div>
+                  <span aria-hidden="true">↔</span>
+                </div>
+                <form className="security-form" onSubmit={handleCreateTransfer}>
+                  <IconSelect icon="↗" value={transferForm.sourceAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, sourceAccount: event.target.value }))} required>
+                    <option value="">From account</option>{accounts.map((account) => <option key={account._id} value={account._id}>{account.name} · {formatCurrency.format(account.balance || 0)}</option>)}
+                  </IconSelect>
+                  <IconSelect icon="↘" value={transferForm.destinationAccount} onChange={(event) => setTransferForm((prev) => ({ ...prev, destinationAccount: event.target.value }))} required>
+                    <option value="">To account</option>{accounts.filter((account) => String(account._id) !== String(transferForm.sourceAccount)).map((account) => <option key={account._id} value={account._id}>{account.name}</option>)}
+                  </IconSelect>
+                  <input type="number" min="0.01" step="0.01" placeholder="Amount (₹)" value={transferForm.amount} onChange={(event) => setTransferForm((prev) => ({ ...prev, amount: event.target.value }))} required />
+                  <input type="date" value={transferForm.date} onChange={(event) => setTransferForm((prev) => ({ ...prev, date: event.target.value }))} required />
+                  <input placeholder="Optional note" value={transferForm.note} onChange={(event) => setTransferForm((prev) => ({ ...prev, note: event.target.value }))} />
+                  <button className="primary small" type="submit" disabled={accounts.length < 2 || !transferForm.sourceAccount || !transferForm.destinationAccount || transferForm.sourceAccount === transferForm.destinationAccount}>Transfer between my accounts</button>
+                </form>
+                {transfers.length > 0 && (
+                  <div className="activity-list">
+                    <strong>Recent self-transfers</strong>
+                    {transfers.slice(0, 3).map((transfer) => (
+                      <div className="activity-row" key={transfer._id}>
+                        <span>{transfer.sourceAccount?.name || "Account"} → {transfer.destinationAccount?.name || "Account"}</span>
+                        <strong>{formatCurrency.format(transfer.amount)}</strong>
+                        <button className="ghost small" type="button" onClick={() => handleDeleteTransfer(transfer)}>Delete</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
             </section>
           )}
 
