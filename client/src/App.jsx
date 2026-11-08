@@ -2862,6 +2862,7 @@ if (authLoading) {
               <div>
                 <p className="card-label">Total balance</p>
                 <h2>{formatCurrency.format(availableBalance)}</h2>
+                <small className="muted">Includes account starting balances; not counted as income.</small>
               </div>
               <div className="summary-detail"><span>Income</span><strong>{formatCurrency.format(totals.income)}</strong></div>
               <div className="summary-detail"><span>Invested</span><strong>{formatCurrency.format(totals.investment)}</strong></div>
